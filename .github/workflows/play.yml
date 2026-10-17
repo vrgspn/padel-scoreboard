@@ -1,0 +1,91 @@
+name: Paquete para Google Play
+
+# Sólo se lanza a mano, desde la pestaña Actions → "Paquete para Google Play" → Run workflow
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Nombre de versión visible (ej. 1.0)'
+        required: true
+        default: '1.0'
+      numero:
+        description: 'Número de versión interno (sube 1 en cada subida a Play)'
+        required: true
+        default: '1'
+
+permissions:
+  contents: write
+
+jobs:
+  aab:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Descargar el código
+        uses: actions/checkout@v4
+
+      - name: Preparar Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Preparar Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.11.1'
+
+      - name: Comprobar que la clave de firma está configurada
+        shell: bash
+        run: |
+          if [ -z "${{ secrets.KEYSTORE_BASE64 }}" ]; then
+            echo "Falta el secreto KEYSTORE_BASE64. Mira COMO-PUBLICAR-EN-GOOGLE-PLAY.md, paso 2."
+            exit 1
+          fi
+
+      - name: Recuperar la clave de firma
+        shell: bash
+        run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > android/upload-keystore.p12
+
+      - name: Poner el número de versión
+        working-directory: android/app
+        shell: bash
+        run: |
+          sed -i "s/versionCode = .*/versionCode = ${{ github.event.inputs.numero }}/" build.gradle.kts
+          sed -i "s/versionName = .*/versionName = \"${{ github.event.inputs.version }}\"/" build.gradle.kts
+          grep -E "versionCode|versionName" build.gradle.kts
+
+      - name: Generar el paquete firmado (AAB)
+        working-directory: android
+        shell: bash
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: subida
+        run: |
+          set -o pipefail
+          gradle :app:bundleRelease --no-daemon --stacktrace 2>&1 | tee ../publicacion.log
+
+      - name: Guardar el log si falla
+        if: failure()
+        shell: bash
+        run: |
+          mkdir -p logs
+          tail -n 400 publicacion.log > logs/ultimo-error-play.log
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add -f logs/ultimo-error-play.log
+          git commit -m "Log del último error al preparar Play [skip ci]"
+          git push origin HEAD:main
+
+      - name: Borrar la clave del disco
+        if: always()
+        run: rm -f android/upload-keystore.p12
+
+      # El .aab es el archivo que se sube a Google Play
+      - name: Descargar el paquete desde aquí
+        uses: actions/upload-artifact@v4
+        with:
+          name: marcador-padel-play-aab
+          path: android/app/build/outputs/bundle/release/*.aab
+          if-no-files-found: error
+          retention-days: 30

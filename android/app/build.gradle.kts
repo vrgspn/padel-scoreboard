@@ -4,16 +4,33 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
+// La clave para firmar la app sólo existe al publicar en Google Play.
+// Si no está, se compila con la clave de pruebas y todo sigue funcionando.
+val keystoreFile = rootProject.file("upload-keystore.p12")
+val hasKeystore = keystoreFile.exists()
+
 android {
     namespace = "com.ismael.padel"
-    compileSdk = 34
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.ismael.padel"
         minSdk = 26
-        targetSdk = 34
+        targetSdk = 36
         versionCode = 1
         versionName = "1.0"
+    }
+
+    signingConfigs {
+        if (hasKeystore) {
+            create("subida") {
+                storeFile = keystoreFile
+                storeType = "PKCS12"
+                storePassword = System.getenv("KEYSTORE_PASSWORD") ?: ""
+                keyAlias = System.getenv("KEY_ALIAS") ?: "subida"
+                keyPassword = System.getenv("KEY_PASSWORD") ?: System.getenv("KEYSTORE_PASSWORD") ?: ""
+            }
+        }
     }
 
     buildTypes {
@@ -22,8 +39,11 @@ android {
         }
         release {
             isMinifyEnabled = false
-            // firmado con la clave de depuración para poder instalarlo sin trámites
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = if (hasKeystore) {
+                signingConfigs.getByName("subida")
+            } else {
+                signingConfigs.getByName("debug")
+            }
         }
     }
 

@@ -18,3 +18,12 @@ ios/DerivedData/
 # Varios
 .DS_Store
 Thumbs.db
+
+# Claves de firma: NUNCA deben subirse
+android/upload-keystore.p12
+*.p12
+*.jks
+*.keystore
+clave.pem
+cert.pem
+keystore.base64.txt
