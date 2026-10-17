@@ -1,0 +1,75 @@
+name: Compilar app iOS
+
+# Se ejecuta en cada cambio subido y también a mano desde la pestaña Actions
+on:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  ipa:
+    runs-on: macos-15
+    steps:
+      - name: Descargar el código
+        uses: actions/checkout@v4
+
+      - name: Ver qué Xcode hay
+        run: xcodebuild -version
+
+      - name: Comprobar que compila para el simulador
+        working-directory: ios
+        run: |
+          xcodebuild \
+            -project PadelScoreboard.xcodeproj \
+            -scheme PadelScoreboard \
+            -configuration Debug \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath build-sim \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+
+      - name: Compilar la app para iPhone y iPad (sin firmar)
+        working-directory: ios
+        run: |
+          xcodebuild \
+            -project PadelScoreboard.xcodeproj \
+            -scheme PadelScoreboard \
+            -configuration Release \
+            -sdk iphoneos \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGN_ENTITLEMENTS="" \
+            DEVELOPMENT_TEAM="" \
+            build
+
+      # Un .ipa es sólo una carpeta Payload comprimida con la app dentro
+      - name: Empaquetar el .ipa
+        working-directory: ios
+        run: |
+          mkdir -p Payload
+          cp -R "build/Build/Products/Release-iphoneos/Marcador de Padel.app" Payload/
+          zip -qry MarcadorPadel-sin-firmar.ipa Payload
+          ls -lh MarcadorPadel-sin-firmar.ipa
+
+      - name: Guardar el .ipa
+        uses: actions/upload-artifact@v4
+        with:
+          name: marcador-padel-ipa
+          path: ios/MarcadorPadel-sin-firmar.ipa
+          if-no-files-found: error
+
+      # Deja el .ipa listo para descargar y firmar con Sideloadly o AltStore
+      - name: Publicar el .ipa descargable
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ultimo-ipa
+          name: Último IPA (iOS)
+          body: |
+            App del Marcador de Pádel para iPhone y iPad, sin firmar.
+            Hay que firmarla con tu Apple ID usando Sideloadly (Windows/Mac)
+            o AltStore/SideStore desde el propio iPhone.
+          files: ios/MarcadorPadel-sin-firmar.ipa
