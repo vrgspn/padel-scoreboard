@@ -39,16 +39,16 @@ final class Speech {
 
     /// Une los trozos con coma; `asSentences` los separa con punto.
     func say(_ parts: [String], rate: Double, asSentences: Bool = false) {
-        let clean = parts
-            .map { clean($0) }
+        let pieces = parts
+            .map { cleaned($0) }
             .filter { !$0.isEmpty }
-        guard !clean.isEmpty else { return }
+        guard !pieces.isEmpty else { return }
 
         let text: String
         if asSentences {
-            text = clean.map { capitalizedFirst($0) }.joined(separator: ". ") + "."
+            text = pieces.map { capitalizedFirst($0) }.joined(separator: ". ") + "."
         } else {
-            text = capitalizedFirst(clean.joined(separator: ", ")) + "."
+            text = capitalizedFirst(pieces.joined(separator: ", ")) + "."
         }
 
         let utterance = AVSpeechUtterance(string: text)
@@ -67,7 +67,7 @@ final class Speech {
         say([text], rate: rate)
     }
 
-    private func clean(_ s: String) -> String {
+    private func cleaned(_ s: String) -> String {
         let noPunct = s.replacingOccurrences(
             of: "[.,;:]+", with: " ", options: .regularExpression
         )

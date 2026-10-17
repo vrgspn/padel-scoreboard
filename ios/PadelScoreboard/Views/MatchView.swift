@@ -80,7 +80,12 @@ private struct TeamPanel: View {
     private var isServingTeam: Bool { serving.team == team && !state.match.finished }
 
     var body: some View {
-        panel
+        // El destello se dibuja en una closure que corre fuera del hilo principal,
+        // así que lo que necesita se calcula aquí y se le pasa ya resuelto.
+        let glowColor = color
+        let isFlashing = state.flashTeam == team
+
+        return panel
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(P.panel)
             .clipShape(RoundedRectangle(cornerRadius: P.radius, style: .continuous))
@@ -88,13 +93,13 @@ private struct TeamPanel: View {
             // destello: entra rápido y se apaga en 1,5 s, sumando luz
             .keyframeAnimator(initialValue: 0.0, trigger: state.flashId) { view, value in
                 view.overlay {
-                    if state.flashTeam == team && value > 0.001 {
+                    if isFlashing && value > 0.001 {
                         GeometryReader { geo in
                             RadialGradient(
                                 stops: [
-                                    .init(color: color, location: 0.0),
-                                    .init(color: color.opacity(0.75), location: 0.42),
-                                    .init(color: color.opacity(0.30), location: 0.70),
+                                    .init(color: glowColor, location: 0.0),
+                                    .init(color: glowColor.opacity(0.75), location: 0.42),
+                                    .init(color: glowColor.opacity(0.30), location: 0.70),
                                     .init(color: .clear, location: 0.88)
                                 ],
                                 center: .center,
