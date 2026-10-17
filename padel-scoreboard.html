@@ -1,0 +1,1535 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#0b1220">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Marcador de Pádel</title>
+<style>
+:root{
+  --bg:#0b1220;
+  --panel:#141d31;
+  --panel-2:#1b2743;
+  --line:#2a3752;
+  --txt:#eef3ff;
+  --dim:#93a2c4;
+  --a:#36d399;      /* equipo A */
+  --b:#fbbf24;      /* equipo B */
+  --danger:#f87171;
+  --radius:18px;
+  --gap:10px;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;margin:0}
+body{
+  background:var(--bg);
+  color:var(--txt);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Ubuntu,Cantarell,"Helvetica Neue",sans-serif;
+  overflow:hidden;
+  user-select:none;-webkit-user-select:none;
+  touch-action:manipulation;
+}
+button{font-family:inherit;color:inherit;border:0;background:none;cursor:pointer}
+input,select{font-family:inherit}
+
+/* ---------- Layout principal ---------- */
+#app{display:flex;flex-direction:column;height:100dvh;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+
+header{
+  display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px;
+  padding:8px 12px;min-height:46px;
+  font-size:13px;color:var(--dim);
+}
+#setsLine{display:flex;gap:8px;flex-wrap:wrap;align-items:center;min-width:0}
+/* acciones del partido, centradas en la cabecera */
+#actions{display:flex;gap:6px;justify-content:center}
+.ibtn.wide{width:auto;min-width:46px;padding:0 10px;gap:7px;grid-auto-flow:column;font-size:17px}
+.ibtn .lbl{font-size:13px;font-weight:600;display:none}
+.ibtn.primary{background:var(--panel-2);color:var(--txt);border-color:#3f5a86}
+.ibtn[disabled]{opacity:.32}
+@media (min-width:760px){
+  .ibtn .lbl{display:inline}
+}
+/* en pantallas estrechas, lo secundario vive en Ajustes */
+@media (max-width:600px){
+  .ibtn.opt{display:none}
+  #clock{display:none}
+}
+.setchip{
+  background:var(--panel);border:1px solid var(--line);border-radius:999px;
+  padding:3px 10px;font-variant-numeric:tabular-nums;white-space:nowrap;color:var(--txt);font-size:12px
+}
+.setchip sup{color:var(--dim);font-size:9px}
+#clock{font-variant-numeric:tabular-nums;letter-spacing:.5px}
+#hdrBtns{display:flex;gap:5px;align-items:center;justify-content:flex-end}
+.ibtn{
+  width:46px;height:46px;border-radius:13px;background:var(--panel);border:1px solid var(--line);
+  display:grid;place-items:center;font-size:19px;color:var(--dim)
+}
+.ibtn:active{transform:scale(.94)}
+.ibtn.on{color:var(--a);border-color:color-mix(in srgb,var(--a) 50%,transparent);background:#12251f}
+
+main{
+  flex:1;display:grid;grid-template-columns:1fr 1fr;gap:var(--gap);
+  padding:0 12px calc(10px + env(safe-area-inset-bottom));min-height:0;
+}
+main.swapped .team[data-t="0"]{order:2}
+main.swapped .team[data-t="1"]{order:1}
+
+.team{
+  position:relative;display:flex;flex-direction:column;min-height:0;
+  background:linear-gradient(180deg,var(--panel),#101a2d);
+  border:1px solid var(--line);border-radius:var(--radius);
+  overflow:hidden;transition:box-shadow .2s,border-color .2s;
+}
+.team[data-t="0"]{--c:var(--a)}
+.team[data-t="1"]{--c:var(--b)}
+.team.serving{border-color:color-mix(in srgb,var(--c) 55%,transparent);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--c) 30%,transparent)}
+/* destello del color de la pareja que gana el punto: entra suave y se apaga despacio */
+.team.flash::after{
+  content:"";position:absolute;inset:0;pointer-events:none;border-radius:inherit;
+  background:
+    radial-gradient(ellipse at center,
+      var(--c) 0%,
+      color-mix(in srgb,var(--c) 75%,transparent) 42%,
+      color-mix(in srgb,var(--c) 30%,transparent) 70%,
+      transparent 88%);
+  mix-blend-mode:screen;          /* suma luz: el color se ve intenso y el número sigue legible */
+  opacity:0;animation:glow 1.5s ease-in-out forwards
+}
+@keyframes glow{
+  0%{opacity:0}
+  18%{opacity:1}
+  55%{opacity:.75}
+  100%{opacity:0}
+}
+
+/* Nombre de la pareja, centrado justo encima de su tanteo */
+.tname{
+  padding:0 10px 4px;font-weight:800;font-size:clamp(22px,4vw,44px);text-align:center;
+  color:var(--c);letter-spacing:1px;text-transform:uppercase;opacity:.92;line-height:1.2;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
+  max-width:100%
+}
+/* Jugadores: uno arriba y otro abajo, como en la pista */
+.player{
+  display:flex;align-items:center;gap:9px;padding:5px 14px;min-width:0;
+  font-size:clamp(19px,3.6vw,42px);font-weight:700;color:var(--dim);
+  transition:color .2s,text-shadow .2s
+}
+/* los nombres largos pasan a dos líneas en vez de recortarse */
+.player .pn{line-height:1.2;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.player.top{padding-top:2px}
+.player.bot{padding-bottom:2px}
+.player.on{color:var(--txt);text-shadow:0 0 24px color-mix(in srgb,var(--c) 45%,transparent)}
+.player .ball{
+  flex:none;width:.78em;height:.78em;border-radius:50%;opacity:0;transform:scale(.6);
+  background:radial-gradient(circle at 34% 28%,#eaff79,#cbe92f 58%,#9cbf16);
+  box-shadow:0 0 14px #cbe92f55, inset -2px -3px 5px #00000030;
+  transition:opacity .2s,transform .2s
+}
+.player.on .ball{opacity:1;transform:scale(1);animation:pulse 1.9s ease-in-out infinite}
+@keyframes pulse{50%{transform:scale(.84);opacity:.65}}
+
+/* La pareja del lado derecho se lee hacia la derecha, como en la pista */
+@media (orientation:landscape){
+  .team.right .player{flex-direction:row-reverse}
+  .team.right .player .pn{text-align:right}
+}
+
+.pointzone{
+  flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  position:relative;min-height:0;min-width:0;cursor:pointer;overflow:hidden
+}
+.point{
+  font-weight:800;font-variant-numeric:tabular-nums;line-height:.85;
+  font-size:min(30vh,26vw);color:var(--txt);
+  text-shadow:0 8px 40px color-mix(in srgb,var(--c) 25%,transparent)
+}
+.point.ad{font-size:min(20vh,18vw)}
+.badge{
+  position:absolute;bottom:10px;right:12px;z-index:2;
+  font-size:clamp(10px,1.6vw,13px);font-weight:700;text-transform:uppercase;letter-spacing:1px;
+  padding:4px 12px;border-radius:999px;white-space:nowrap;
+  background:color-mix(in srgb,var(--c) 20%,#0b1220);color:var(--c);
+  border:1px solid color-mix(in srgb,var(--c) 45%,transparent);opacity:0;transition:opacity .2s
+}
+.badge.show{opacity:1}
+
+.games{
+  display:flex;gap:6px;justify-content:center;align-items:center;
+  padding:8px 10px 12px;border-top:1px solid var(--line);background:#0d1526
+}
+.gbox{
+  min-width:clamp(28px,5vw,44px);height:clamp(30px,5vw,46px);border-radius:10px;
+  background:var(--panel-2);display:grid;place-items:center;
+  font-weight:700;font-variant-numeric:tabular-nums;font-size:clamp(14px,2.6vw,22px);color:var(--dim)
+}
+.gbox.cur{background:color-mix(in srgb,var(--c) 22%,#0b1220);color:var(--c);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--c) 40%,transparent)}
+.gbox.won{color:var(--txt)}
+.gbox .tbs{font-size:.55em;vertical-align:super;color:var(--dim);margin-left:1px}
+
+.fbtn{
+  background:var(--panel);border:1px solid var(--line);border-radius:14px;
+  padding:14px 20px;font-size:15px;font-weight:600;color:var(--dim);min-height:54px;
+  display:inline-flex;align-items:center;justify-content:center;gap:8px
+}
+.fbtn:active{transform:scale(.96)}
+.fbtn.primary{background:var(--panel-2);color:var(--txt)}
+.fbtn[disabled]{opacity:.35}
+.fbtn .k{font-size:11px;color:#64748b;border:1px solid var(--line);border-radius:5px;padding:0 4px}
+
+/* ---------- Avisos ---------- */
+#banner{
+  position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) scale(.9);
+  background:#0f1a2e;border:1px solid var(--line);border-radius:20px;
+  padding:22px 34px;text-align:center;z-index:40;
+  box-shadow:0 30px 80px #000a;opacity:0;pointer-events:none;transition:opacity .25s,transform .25s
+}
+#banner.show{opacity:1;transform:translate(-50%,-50%) scale(1)}
+#banner .big{font-size:clamp(20px,5vw,34px);font-weight:800;letter-spacing:.5px}
+#banner .sub{color:var(--dim);font-size:13px;margin-top:6px}
+
+#toast{
+  position:fixed;left:50%;bottom:calc(16px + env(safe-area-inset-bottom));transform:translateX(-50%) translateY(10px);
+  background:#0f1a2e;border:1px solid var(--line);border-radius:999px;padding:9px 18px;
+  font-size:13px;z-index:45;opacity:0;pointer-events:none;transition:.22s;white-space:nowrap;max-width:92vw;overflow:hidden;text-overflow:ellipsis
+}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+#pressHint{
+  position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:46;
+  display:flex;flex-direction:column;align-items:center;gap:10px;
+  background:#0f1a2eee;border:1px solid var(--line);border-radius:18px;padding:16px 22px;
+  box-shadow:0 20px 60px #000a;opacity:0;transition:opacity .15s;pointer-events:none;
+  max-width:88vw
+}
+#pressHint.show{opacity:1}
+#pressHint .dots{display:flex;gap:10px}
+#pressHint .dot{width:18px;height:18px;border-radius:50%;background:#334155}
+#pressHint .dot.on{background:var(--a);box-shadow:0 0 14px color-mix(in srgb,var(--a) 60%,transparent)}
+#pressHint .txt{font-size:14px;color:var(--txt);text-align:center;font-weight:600}
+#pressHint .bar{width:190px;max-width:70vw;height:5px;border-radius:99px;background:#24324d;overflow:hidden}
+#pressHint .bar i{display:block;height:100%;width:100%;background:var(--a);transform-origin:left}
+@keyframes burst{from{transform:scaleX(1)}to{transform:scaleX(0)}}
+
+/* ---------- Modales ---------- */
+.modal{
+  position:fixed;inset:0;z-index:60;background:#060a13ee;backdrop-filter:blur(6px);
+  display:none;overflow:auto;padding:max(16px,env(safe-area-inset-top)) 16px calc(24px + env(safe-area-inset-bottom))
+}
+.modal.open{display:block}
+.sheet{max-width:620px;margin:0 auto}
+.sheet h1{font-size:22px;margin:4px 0 2px;display:flex;align-items:center;gap:10px}
+.sheet h1 span{font-size:26px}
+.sheet p.lead{color:var(--dim);font-size:13px;margin:0 0 16px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:14px;margin-bottom:12px}
+.card h2{font-size:12px;text-transform:uppercase;letter-spacing:1.4px;color:var(--dim);margin:0 0 12px}
+.row{display:flex;gap:10px;align-items:center;margin-bottom:10px;flex-wrap:wrap}
+.row:last-child{margin-bottom:0}
+label.fl{flex:1;min-width:130px;font-size:13px;color:var(--dim);display:flex;flex-direction:column;gap:5px}
+input[type=text],select{
+  background:#0c1424;border:1px solid var(--line);color:var(--txt);border-radius:11px;
+  padding:14px 12px;font-size:16px;width:100%;min-height:50px
+}
+input[type=text]:focus,select:focus{outline:2px solid #3b82f6aa;outline-offset:0}
+.seg{display:flex;gap:6px;flex-wrap:wrap}
+.seg button{
+  background:#0c1424;border:1px solid var(--line);border-radius:11px;padding:13px 16px;
+  font-size:14.5px;color:var(--dim);font-weight:600;min-height:48px
+}
+.seg button.sel{background:var(--panel-2);color:var(--txt);border-color:#3f5a86}
+.toggle{
+  display:flex;align-items:center;justify-content:space-between;gap:14px;
+  padding:15px 0;border-bottom:1px solid var(--line);font-size:15px;cursor:pointer
+}
+.toggle:last-child{border-bottom:0}
+.toggle small{display:block;color:var(--dim);font-size:11.5px;font-weight:400;margin-top:3px;line-height:1.45}
+.sw{width:62px;height:36px;border-radius:999px;background:#2a3752;position:relative;flex:none;transition:.2s}
+.sw::after{content:"";position:absolute;top:3px;left:3px;width:30px;height:30px;border-radius:50%;background:#64748b;transition:.2s}
+.sw.on{background:#14532d}
+.sw.on::after{left:29px;background:var(--a)}
+.bindrow{display:flex;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid var(--line);font-size:14.5px}
+.bindrow:last-child{border-bottom:0}
+.bindrow .nm{flex:1}
+.bindrow .nm small{display:block;color:var(--dim);font-size:11.5px;font-weight:400;margin-top:2px}
+.keys{display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end;max-width:52%}
+.keytag{
+  background:#0c1424;border:1px solid var(--line);border-radius:8px;padding:7px 10px;
+  font-size:12px;color:var(--dim);font-family:ui-monospace,Menlo,Consolas,monospace;white-space:nowrap
+}
+.keytag b{color:var(--txt);font-weight:600}
+.learn{background:var(--panel-2);border:1px solid #3f5a86;border-radius:11px;padding:12px 16px;font-size:13.5px;font-weight:600;flex:none;min-height:46px}
+.learn.active{background:#1e3a8a;border-color:#60a5fa;animation:blink 1s infinite}
+@keyframes blink{50%{opacity:.5}}
+label.fl.narrow{max-width:190px}
+@media (max-width:540px){
+  .row{flex-direction:column;align-items:stretch}
+  label.fl.narrow{max-width:none}
+  .seg{display:grid;grid-template-columns:repeat(3,1fr)}
+  .bindrow{flex-wrap:wrap}
+  .bindrow .nm{flex:1 0 100%;margin-bottom:9px}
+  .keys{max-width:none;flex:1;justify-content:flex-start}
+  .toggle{font-size:14.5px}
+}
+.help{font-size:12.5px;color:var(--dim);line-height:1.6}
+.help ol{padding-left:18px;margin:8px 0}
+.help li{margin-bottom:6px}
+.help code{background:#0c1424;border:1px solid var(--line);border-radius:5px;padding:1px 5px;font-size:11.5px}
+.bigbtn{
+  width:100%;padding:19px;min-height:60px;border-radius:15px;font-size:17px;font-weight:700;
+  background:var(--a);color:#06281b;margin-top:4px
+}
+.bigbtn.ghost{background:var(--panel);color:var(--txt);border:1px solid var(--line);margin-top:8px}
+.bigbtn.danger{background:#3f1d1d;color:#fca5a5;border:1px solid #7f1d1d}
+.pcount{display:flex;gap:8px}
+.pcount input{flex:1}
+#winOverlay .trophy{font-size:64px;text-align:center}
+.scoreline{
+  text-align:center;font-size:20px;font-variant-numeric:tabular-nums;letter-spacing:2px;
+  color:var(--dim);margin:10px 0 2px
+}
+/* ---------- Orientación y tamaño de pantalla ---------- */
+
+/* VERTICAL (móvil y tablet): un marcador debajo del otro */
+@media (orientation:portrait){
+  main{grid-template-columns:1fr;grid-template-rows:1fr 1fr}
+  .team{
+    display:grid;
+    grid-template-areas:"t p" "b p" "g p";
+    grid-template-columns:minmax(128px,42%) 1fr;
+    grid-template-rows:1fr 1fr auto;
+  }
+  .player.top{grid-area:t;align-self:center;padding-top:10px}
+  .player.bot{grid-area:b;align-self:center}
+  .player{font-size:clamp(17px,5.4vw,32px)}
+  .pointzone{grid-area:p}
+  .games{grid-area:g;border-top:0;background:transparent;justify-content:flex-start;padding:4px 14px 10px}
+  .point{font-size:min(30vh,44vw)}
+  .point.ad{font-size:min(19vh,28vw)}
+  .badge{top:8px;right:10px;bottom:auto;font-size:11px;padding:3px 9px}
+}
+
+/* Vertical en pantallas pequeñas: cabecera y pie compactos */
+@media (orientation:portrait) and (max-width:760px){
+  .gbox{min-width:26px;height:28px;font-size:15px;border-radius:8px}
+  #setsLine{flex-wrap:nowrap}
+  .setchip.opt{display:none}
+  .fbtn{flex:1;padding:16px 8px;font-size:14px;min-height:58px;white-space:nowrap}
+  .fbtn .k{display:none}
+}
+
+/* Móvil muy estrecho */
+@media (orientation:portrait) and (max-width:360px){
+  .team{grid-template-columns:minmax(112px,40%) 1fr}
+  .tname{font-size:20px}
+  .fbtn{padding:16px 4px;font-size:13px}
+}
+
+/* Horizontal con poca altura (móvil tumbado): cabecera y pie compactos */
+@media (orientation:landscape) and (max-height:520px){
+  header{min-height:46px;padding:4px 10px;font-size:12px}
+  .ibtn{width:42px;height:42px;font-size:17px}
+  main{gap:8px;padding:0 8px calc(6px + env(safe-area-inset-bottom))}
+  .tname{padding:0 10px 2px;font-size:22px;-webkit-line-clamp:1}
+  .player{padding:2px 10px;font-size:clamp(17px,3.1vw,30px)}
+  .games{padding:4px 8px 6px}
+  .gbox{height:26px;min-width:24px;font-size:14px}
+  .fbtn{padding:12px 18px;font-size:13.5px;min-height:46px}
+  .point{font-size:min(52vh,30vw)}
+  .point.ad{font-size:min(26vh,18vw)}
+  .badge{bottom:6px;right:10px;font-size:10px}
+  #setsLine{flex-wrap:nowrap}
+  .setchip.opt{display:none}
+  .fbtn .k{display:none}
+  #toast{bottom:calc(14px + env(safe-area-inset-bottom))}
+}
+
+/* Tablet en vertical: mismo apilado, con tipografía mayor */
+@media (orientation:portrait) and (min-width:761px){
+  .point{font-size:min(34vh,42vw)}
+  .point.ad{font-size:min(18vh,24vw)}
+  .tname{font-size:36px}
+  .player{font-size:42px}
+  .gbox{min-width:40px;height:44px;font-size:20px}
+  .badge{font-size:14px;padding:5px 14px;top:10px;right:14px;bottom:auto}
+}
+
+/* Horizontal en pantallas grandes */
+@media (orientation:landscape) and (min-width:900px) and (min-height:600px){
+  .point{font-size:min(52vh,28vw)}
+  .fbtn{font-size:16px;padding:16px 26px;min-height:60px}
+  .ibtn{width:50px;height:50px;font-size:21px}
+}
+</style>
+</head>
+<body>
+
+<div id="app">
+  <header>
+    <div id="setsLine"></div>
+    <div id="actions">
+      <button class="ibtn wide" id="btnUndo" title="Deshacer el último punto">↶<span class="lbl">Deshacer</span></button>
+      <button class="ibtn wide" id="btnRedo" title="Rehacer">↷<span class="lbl">Rehacer</span></button>
+      <button class="ibtn wide primary" id="btnNew" title="Nuevo partido">✚<span class="lbl">Nuevo</span></button>
+    </div>
+    <div id="hdrBtns">
+      <div id="clock">0:00</div>
+      <button class="ibtn" id="btnVoice" title="Cantar el marcador en voz alta">🔇</button>
+      <button class="ibtn opt" id="btnSwap" title="Intercambiar lados en pantalla">⇄</button>
+      <button class="ibtn opt" id="btnFull" title="Pantalla completa">⛶</button>
+      <button class="ibtn" id="btnCfg" title="Ajustes y mando">⚙</button>
+    </div>
+  </header>
+
+  <main id="court">
+    <section class="team" data-t="0">
+      <div class="player top"><span class="ball"></span><span class="pn"></span></div>
+      <div class="pointzone"><div class="tname"></div><div class="point">0</div></div>
+      <div class="player bot"><span class="ball"></span><span class="pn"></span></div>
+      <div class="games"></div>
+      <div class="badge"></div>
+    </section>
+    <section class="team" data-t="1">
+      <div class="player top"><span class="ball"></span><span class="pn"></span></div>
+      <div class="pointzone"><div class="tname"></div><div class="point">0</div></div>
+      <div class="player bot"><span class="ball"></span><span class="pn"></span></div>
+      <div class="games"></div>
+      <div class="badge"></div>
+    </section>
+  </main>
+
+</div>
+
+<div id="banner"><div class="big"></div><div class="sub"></div></div>
+<div id="toast"></div>
+<div id="pressHint">
+  <div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+  <div class="txt"></div>
+  <div class="bar"><i></i></div>
+</div>
+
+<!-- ============ SETUP ============ -->
+<div class="modal" id="setup">
+  <div class="sheet">
+    <h1><span>🎾</span> Marcador de Pádel</h1>
+    <p class="lead">Configura el partido. Puedes dejarlo todo como está y empezar.</p>
+
+    <div class="card">
+      <h2>Parejas</h2>
+      <div class="row">
+        <label class="fl">Pareja A<input type="text" id="nameA" maxlength="18" placeholder="Pareja A"></label>
+        <label class="fl">Pareja B<input type="text" id="nameB" maxlength="18" placeholder="Pareja B"></label>
+      </div>
+      <div class="row">
+        <label class="fl">Jugadores A
+          <div class="pcount"><input type="text" id="a1" maxlength="14" placeholder="Jugador 1"><input type="text" id="a2" maxlength="14" placeholder="Jugador 2"></div>
+        </label>
+      </div>
+      <div class="row">
+        <label class="fl">Jugadores B
+          <div class="pcount"><input type="text" id="b1" maxlength="14" placeholder="Jugador 3"><input type="text" id="b2" maxlength="14" placeholder="Jugador 4"></div>
+        </label>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Saque inicial</h2>
+      <div class="row"><label class="fl">Saca primero<select id="firstServer"></select></label></div>
+      <small class="help">El saque va rotando: A1 → B1 → A2 → B2 y vuelta a empezar.</small>
+    </div>
+
+    <div class="card">
+      <h2>Formato</h2>
+      <div class="row">
+        <label class="fl">Sets
+          <div class="seg" id="segSets">
+            <button data-v="1">1 set</button><button data-v="3">Al mejor de 3</button><button data-v="5">Al mejor de 5</button>
+          </div>
+        </label>
+      </div>
+      <div class="toggle"><div>Punto de oro<small>Con 40-40 el siguiente punto decide el juego. Sin punto de oro se juega con ventajas.</small></div><div class="sw" data-cfg="golden"></div></div>
+      <div class="toggle"><div>Tie-break a 6-6<small>Desactivado, el set se gana por diferencia de 2 juegos.</small></div><div class="sw" data-cfg="tiebreak"></div></div>
+      <div class="toggle"><div>Super tie-break en el set decisivo<small>El último set se juega a 10 puntos en lugar de a juegos.</small></div><div class="sw" data-cfg="superTb"></div></div>
+    </div>
+
+    <button class="bigbtn" id="btnStart">Empezar partido</button>
+    <button class="bigbtn ghost" id="btnBackMatch">Volver al partido en curso</button>
+    <button class="bigbtn ghost" id="btnSetupCfg">Configurar mando ⚙</button>
+  </div>
+</div>
+
+<!-- ============ AJUSTES ============ -->
+<div class="modal" id="settings">
+  <div class="sheet">
+    <h1><span>⚙</span> Ajustes</h1>
+    <p class="lead">Sonido, mando a distancia, comportamiento y partido.</p>
+
+    <div class="card">
+      <h2>Sonido</h2>
+      <div class="toggle"><div>Cantar el marcador<small>Dice el tanteo tras cada punto y quién gana cada juego, set y partido. Siempre empezando por quien saca, como en la pista.</small></div><div class="sw" data-cfg="voice"></div></div>
+      <div class="toggle"><div>Decir quién saca<small>Añade «saca Ismael» después del tanteo.</small></div><div class="sw" data-cfg="voiceServer"></div></div>
+      <div class="toggle"><div>Decir desde qué lado saca<small>Añade «desde la derecha» o «desde la izquierda», según toque cuadro de derecha o de revés.</small></div><div class="sw" data-cfg="voiceCourtSide"></div></div>
+      <div class="toggle"><div>Avisar del cambio de lado<small>Dice «cambio de lado» cuando toca cambiar de pista.</small></div><div class="sw" data-cfg="voiceSwitch"></div></div>
+      <div class="toggle"><div>Vibrar al apuntar<small>Confirmación táctil en el móvil al sumar cada punto.</small></div><div class="sw" data-cfg="vibrate"></div></div>
+      <div class="row" style="margin-top:12px">
+        <label class="fl">Voz del dispositivo<select id="voiceSel"></select></label>
+        <label class="fl narrow">Velocidad
+          <div class="seg" id="segRate">
+            <button data-v="0.9">Lenta</button><button data-v="1.05">Normal</button><button data-v="1.3">Rápida</button>
+          </div>
+        </label>
+      </div>
+      <div class="row"><button class="fbtn" id="btnVoiceTest">▶ Probar voz</button><span class="help" id="voiceWarn"></span></div>
+    </div>
+
+    <div class="card">
+      <h2>Mando de disparo (pulsadores)</h2>
+      <div class="toggle"><div>Modo un solo botón<small>Para mandos con un único pulsador: 1 pulsación = punto para quien saca · 2 pulsaciones = punto para quien resta · 3 pulsaciones = deshacer.</small></div><div class="sw" data-cfg="oneButton"></div></div>
+      <div class="row" style="margin-top:12px">
+        <label class="fl">Espera entre pulsaciones
+          <div class="seg" id="segBurst">
+            <button data-v="1500">1,5 s</button><button data-v="3000">3 s</button><button data-v="5000">5 s</button><button data-v="8000">8 s</button>
+          </div>
+          <small class="help">Tiempo que se espera otra pulsación antes de apuntar. Súbelo si tu pulsador tarda en responder; bájalo si quieres que el punto entre al instante. Con tres pulsaciones no se espera.</small>
+        </label>
+      </div>
+      <div id="binds"></div>
+      <div class="row" style="margin-top:12px">
+        <button class="fbtn" id="btnMedia">🎵 Activar teclas de medios</button>
+        <button class="fbtn" id="btnResetBinds">Restaurar teclas</button>
+      </div>
+      <div id="padState" class="help" style="margin-top:10px"></div>
+      <div id="signalLog" class="help" style="margin-top:6px;color:var(--a)"></div>
+    </div>
+
+    <div class="card">
+      <h2>Cómo conectar el mando</h2>
+      <div class="help">
+        <ol>
+          <li>Empareja el pulsador Bluetooth con el móvil o tablet (aparece como teclado o mando).</li>
+          <li>Pulsa <b>Aprender</b> en la acción que quieras, aprieta el botón del mando y quedará asignado. Abajo verás en verde lo que va llegando.</li>
+          <li><b>¿Sube o baja el volumen al pulsar?</b> Android se queda las teclas de volumen y la web nunca las ve, así que no hay forma de usarlas desde aquí. Tienes dos salidas:
+            <ul style="padding-left:16px;margin:6px 0">
+              <li>Cambiar el mando (o el reloj) a <b>modo iOS</b> o <b>modo música/multimedia</b>: entonces manda <code>Enter</code> o teclas de medios, que sí se reciben.</li>
+              <li>Pulsar <b>Activar teclas de medios</b> aquí y probar de nuevo: reproduce una pista muda para que el sistema envíe play/pausa y pista siguiente/anterior a esta página.</li>
+            </ul>
+          </li>
+          <li>Con un mando de un solo botón, activa <b>Modo un solo botón</b>: deja listas las teclas de medios y cualquier señal del pulsador cuenta como pulsación.</li>
+        </ol>
+        Si abajo no aparece nada al apretar el mando, el sistema no está dejando pasar esa tecla: un toque en cada mitad de la pantalla siempre suma punto.
+      </div>
+    </div>
+
+
+    <div class="card">
+      <h2>Pantalla</h2>
+      <div class="toggle"><div>Mantener pantalla encendida<small>Evita que se apague durante el partido.</small></div><div class="sw" data-cfg="wake"></div></div>
+      <div class="toggle"><div>Intercambiar lados automáticamente<small>Al cambiar de lado en la pista, las parejas también cambian en el marcador.</small></div><div class="sw" data-cfg="autoSwap"></div></div>
+      <div class="toggle"><div>Avisar del cambio de lado<small>Muestra un cartel cuando toca cambiar.</small></div><div class="sw" data-cfg="sideAlert"></div></div>
+      <div class="row" style="margin-top:12px">
+        <button class="fbtn" id="btnSwap2">⇄ Intercambiar lados</button>
+        <button class="fbtn" id="btnFull2">⛶ Pantalla completa</button>
+      </div>
+    </div>
+
+    <button class="bigbtn" id="btnCloseCfg">Volver al partido</button>
+    <button class="bigbtn ghost" id="btnEditMatch">Editar parejas y formato</button>
+    <button class="bigbtn danger" id="btnReset">Reiniciar marcador a 0</button>
+  </div>
+</div>
+
+<!-- ============ FIN DE PARTIDO ============ -->
+<div class="modal" id="winOverlay">
+  <div class="sheet" style="margin-top:8vh">
+    <div class="trophy">🏆</div>
+    <h1 style="justify-content:center;text-align:center;display:block" id="winName"></h1>
+    <div class="scoreline" id="winScore"></div>
+    <p class="lead" style="text-align:center" id="winMeta"></p>
+    <button class="bigbtn" id="btnWinNew">Nuevo partido</button>
+    <button class="bigbtn ghost" id="btnWinBack">Ver marcador</button>
+  </div>
+</div>
+
+<script>
+"use strict";
+
+/* =========================================================
+   Configuración y estado
+   ========================================================= */
+const LS = "padel-scoreboard-v1";
+const PT = ["0","15","30","40","AD"];
+
+const defCfg = () => ({
+  names:["Nosotros","Ellos"],
+  players:[["Jugador 1","Jugador 2"],["Jugador 3","Jugador 4"]],
+  firstServe:[0,0],          // [equipo, jugador]
+  bestOf:3,
+  golden:true,
+  tiebreak:true,
+  superTb:false,
+  oneButton:false,
+  burstWindow:5000,      // espera entre pulsaciones del mando de un botón
+  voice:false,
+  voiceServer:true,      // decir quién saca
+  voiceCourtSide:true,   // decir desde qué lado saca
+  voiceSwitch:true,      // avisar del cambio de lado
+  voiceName:"",
+  voiceRate:1.05,
+  vibrate:true,
+  wake:true,
+  autoSwap:false,
+  sideAlert:true,
+  binds:defBinds(),
+});
+
+function defBinds(){
+  return {
+    pointA:["key:ArrowLeft","key:KeyA","key:AudioVolumeDown"],
+    pointB:["key:ArrowRight","key:KeyL","key:AudioVolumeUp"],
+    undo  :["key:Backspace","key:KeyZ"],
+    single:["key:Enter","key:NumpadEnter","key:Space"],
+  };
+}
+const BIND_INFO = {
+  pointA:{label:"Punto para la pareja A", hint:"Suma un punto a la pareja de la izquierda"},
+  pointB:{label:"Punto para la pareja B", hint:"Suma un punto a la pareja de la derecha"},
+  undo  :{label:"Deshacer",               hint:"Quita el último punto apuntado"},
+  single:{label:"Botón único",            hint:"Usado en modo un solo botón"},
+};
+
+const newState = () => ({
+  pts:[0,0],
+  games:[0,0],
+  setsWon:[0,0],
+  sets:[],                 // [[g0,g1,tb|null], ...]
+  serveIdx:0,
+  tiebreak:false,
+  tb:[0,0],
+  tbTarget:7,
+  tbStartIdx:0,
+  swapped:false,
+  started:null,
+  elapsed:0,
+  finished:false,
+  winner:null,
+});
+
+let cfg = defCfg();
+let st  = newState();
+let past = [], future = [];
+
+/* ---------- persistencia ---------- */
+function save(){
+  try{ localStorage.setItem(LS, JSON.stringify({cfg, st, past:past.slice(-60)})); }catch(e){}
+}
+function load(){
+  try{
+    const raw = localStorage.getItem(LS);
+    if(!raw) return false;
+    const d = JSON.parse(raw);
+    if(!d || !d.cfg || !d.st) return false;
+    cfg = Object.assign(defCfg(), d.cfg);
+    cfg.binds = Object.assign(defBinds(), d.cfg.binds||{});
+    st = Object.assign(newState(), d.st);
+    past = Array.isArray(d.past) ? d.past : [];
+    return true;
+  }catch(e){ return false; }
+}
+
+/* =========================================================
+   Reglas del juego
+   ========================================================= */
+const clone = o => JSON.parse(JSON.stringify(o));
+const setsNeeded = () => Math.ceil(cfg.bestOf/2);
+
+function serveOrder(){
+  const [t,p] = cfg.firstServe;
+  const o = 1-t;
+  // A1 -> B1 -> A2 -> B2 (empezando por el jugador elegido de cada pareja)
+  return [[t,p],[o,p],[t,1-p],[o,1-p]];
+}
+function serverOf(s){
+  const ord = serveOrder();
+  if(s.tiebreak){
+    const n = s.tb[0]+s.tb[1];
+    return ord[(s.tbStartIdx + Math.floor((n+1)/2)) % 4];
+  }
+  return ord[s.serveIdx % 4];
+}
+
+function endSet(s,t,ev,fromTb){
+  ev.set = true;
+  s.setsWon[t]++;
+  s.sets.push([s.games[0], s.games[1], fromTb ? s.tb.slice() : null]);
+  if(s.setsWon[t] >= setsNeeded()){
+    ev.match = true; s.finished = true; s.winner = t;
+    return;
+  }
+  s.games=[0,0]; s.pts=[0,0]; s.tiebreak=false; s.tb=[0,0]; s.tbTarget=7;
+  ev.side = true;
+  // ¿set decisivo a super tie-break?
+  const n = setsNeeded()-1;
+  if(cfg.superTb && s.setsWon[0]===n && s.setsWon[1]===n){
+    s.tiebreak = true; s.tbTarget = 10; s.tbStartIdx = s.serveIdx;
+    ev.tbStart = true;
+  }
+}
+
+function endGame(s,t,ev){
+  ev.game = true;
+  const o = 1-t;
+  s.games[t]++; s.pts=[0,0]; s.serveIdx++;
+  if(s.games[t] >= 6 && s.games[t]-s.games[o] >= 2){ endSet(s,t,ev,false); return; }
+  if(cfg.tiebreak && s.games[0]===6 && s.games[1]===6){
+    s.tiebreak = true; s.tb=[0,0]; s.tbTarget=7; s.tbStartIdx=s.serveIdx;
+    ev.tbStart = true;
+  }
+  if((s.games[0]+s.games[1]) % 2 === 1) ev.side = true;
+}
+
+/** Aplica un punto al estado `s`. Devuelve los eventos que provoca. */
+function applyPoint(s,t){
+  const ev = {game:false,set:false,match:false,side:false,tbStart:false};
+  const o = 1-t;
+  if(s.finished) return ev;
+
+  if(s.tiebreak){
+    s.tb[t]++;
+    const tgt = s.tbTarget||7;
+    if(s.tb[t] >= tgt && s.tb[t]-s.tb[o] >= 2){
+      s.games[t]++; s.serveIdx++;
+      endSet(s,t,ev,true);
+    }else if((s.tb[0]+s.tb[1]) % 6 === 0){
+      ev.side = true;
+    }
+    return ev;
+  }
+
+  if(s.pts[t] < 3){ s.pts[t]++; return ev; }
+  if(s.pts[t] === 3){
+    if(s.pts[o] < 3){ endGame(s,t,ev); return ev; }
+    if(s.pts[o] === 3){
+      if(cfg.golden) endGame(s,t,ev); else s.pts[t]=4;
+      return ev;
+    }
+    s.pts[o] = 3;           // el rival pierde la ventaja
+    return ev;
+  }
+  endGame(s,t,ev);          // tenía ventaja
+  return ev;
+}
+
+/** Qué estaría en juego si la pareja `t` gana el punto siguiente. */
+function stake(t){
+  if(st.finished) return "";
+  const c = clone(st);
+  const ev = applyPoint(c,t);
+  if(ev.match) return "Punto de partido";
+  if(ev.set)   return "Punto de set";
+  if(ev.game)  return serverOf(st)[0] === t ? "Punto de juego" : "Break";
+  return "";
+}
+
+/* =========================================================
+   Acciones
+   ========================================================= */
+let lastPoint = 0;
+
+function addPoint(t, src){
+  if(st.finished) return;
+  const now = Date.now();
+  if(src === "remote" && now - lastPoint < 280) return;   // antirrebote del pulsador
+  lastPoint = now;
+
+  past.push(clone(st)); if(past.length > 200) past.shift();
+  future = [];
+  if(!st.started) st.started = now;
+
+
+  const ev = applyPoint(st, t);
+  announce(t, ev);
+  render();
+  flash(t);
+  buzz(ev.match ? [60,40,60,40,120] : ev.set ? [40,30,80] : ev.game ? [30,25,45] : 25);
+
+  if(ev.match)        banner("🏆 " + cfg.names[st.winner], "Gana el partido " + scoreLine());
+  else if(ev.set)     banner("Set para " + cfg.names[t], "Van " + st.setsWon.join(" - ") + " en sets");
+  else if(ev.tbStart) banner(st.tbTarget === 10 ? "Super tie-break" : "¡Tie-break!", "A " + st.tbTarget + " puntos, diferencia de 2");
+  else if(ev.game)    toast("Juego para " + cfg.names[t] + " · " + st.games[0] + "-" + st.games[1]);
+
+  if(ev.side){
+    if(cfg.autoSwap) st.swapped = !st.swapped;
+    if(cfg.sideAlert && !ev.match) setTimeout(()=>banner("Cambio de lado","", 2600), ev.game||ev.set?1400:0);
+    render();
+  }
+  if(ev.match) setTimeout(showWin, 900);
+  save();
+}
+
+function undo(){
+  if(!past.length) return;
+  future.push(clone(st));
+  st = past.pop();
+  render(); buzz(15); toast("Deshecho"); save();
+  if(cfg.voice) say(["corregido", st.finished ? setsPhrase() : pointsPhrase(), st.finished ? "" : serveLine()]);
+  if(!st.finished) document.getElementById("winOverlay").classList.remove("open");
+}
+function redo(){
+  if(!future.length) return;
+  past.push(clone(st));
+  st = future.pop();
+  render(); buzz(15); save();
+}
+
+function resetScore(){
+  past = []; future = [];
+  const sw = st.swapped;
+  st = newState(); st.swapped = sw;
+  render(); save();
+  closeModal("settings"); closeModal("winOverlay");
+  toast("Marcador a cero");
+}
+
+/* =========================================================
+   Pintado
+   ========================================================= */
+const $  = s => document.querySelector(s);
+const $$ = s => Array.from(document.querySelectorAll(s));
+const teamEls = [];
+
+function initTeams(){
+  $$(".team").forEach(el=>{
+    const t = +el.dataset.t;
+    teamEls[t] = el;
+    el.querySelector(".pointzone").addEventListener("click", ()=>addPoint(t,"tap"));
+  });
+}
+
+function pointLabel(t){
+  if(st.tiebreak) return String(st.tb[t]);
+  return PT[st.pts[t]];
+}
+
+function render(){
+  const srv = serverOf(st);
+  $("#court").classList.toggle("swapped", !!st.swapped);
+
+  for(let t=0;t<2;t++){
+    const el = teamEls[t];
+    el.querySelector(".tname").textContent = cfg.names[t];
+    el.classList.toggle("serving", srv[0]===t && !st.finished);
+    // la pareja que ocupa el lado derecho alinea sus nombres a la derecha
+    el.classList.toggle("right", (t === 1) !== !!st.swapped);
+
+    // jugadores: uno arriba y otro abajo, con la pelota en quien saca
+    el.querySelectorAll(".player").forEach((pe,i)=>{
+      pe.querySelector(".pn").textContent = cfg.players[t][i];
+      pe.classList.toggle("on", srv[0]===t && srv[1]===i && !st.finished);
+    });
+
+    // punto
+    const p = el.querySelector(".point");
+    const lbl = pointLabel(t);
+    p.textContent = lbl;
+    p.classList.toggle("ad", lbl === "AD");
+
+    // aviso
+    const b = el.querySelector(".badge");
+    let txt = stake(t);
+    if(!txt && !st.tiebreak && cfg.golden && st.pts[0]===3 && st.pts[1]===3) txt = "Punto de oro";
+    b.textContent = txt;
+    b.classList.toggle("show", !!txt);
+
+    // juegos del set actual + sets anteriores
+    const g = el.querySelector(".games");
+    g.innerHTML = "";
+    st.sets.forEach(s=>{
+      const d = document.createElement("div");
+      d.className = "gbox" + (s[t] > s[1-t] ? " won" : "");
+      d.innerHTML = String(s[t]) + (s[2] ? '<span class="tbs">'+s[2][t]+'</span>' : "");
+      g.appendChild(d);
+    });
+    if(!st.finished){
+      const d = document.createElement("div");
+      d.className = "gbox cur";
+      d.textContent = st.games[t];
+      g.appendChild(d);
+    }
+  }
+
+  // cabecera
+  const sl = $("#setsLine");
+  sl.innerHTML = "";
+  const chip = (html,cls)=>{ const c=document.createElement("div"); c.className="setchip"+(cls?" "+cls:""); c.innerHTML=html; sl.appendChild(c); };
+  chip("Sets <b>"+st.setsWon[0]+" - "+st.setsWon[1]+"</b>");
+  if(st.tiebreak) chip(st.tbTarget===10 ? "Super tie-break a 10" : "Tie-break");
+  if(cfg.golden && !st.tiebreak) chip("Punto de oro","opt");
+  chip(cfg.bestOf===1 ? "1 set" : "Al mejor de "+cfg.bestOf,"opt");
+
+  $("#btnUndo").disabled = !past.length;
+  $("#btnRedo").disabled = !future.length;
+  tickClock();
+}
+
+function scoreLine(){
+  return st.sets.map(s => s[0]+"-"+s[1] + (s[2] ? "("+Math.min(s[2][0],s[2][1])+")" : "")).join("  ");
+}
+
+function flash(t){
+  const el = teamEls[t];
+  el.classList.remove("flash"); void el.offsetWidth; el.classList.add("flash");
+}
+
+let toastT;
+function toast(msg){
+  const e = $("#toast"); e.textContent = msg; e.classList.add("show");
+  clearTimeout(toastT); toastT = setTimeout(()=>e.classList.remove("show"), 1900);
+}
+let bannerT;
+function banner(big, sub, ms){
+  const e = $("#banner");
+  e.querySelector(".big").textContent = big;
+  e.querySelector(".sub").textContent = sub || "";
+  e.classList.add("show");
+  clearTimeout(bannerT); bannerT = setTimeout(()=>e.classList.remove("show"), ms || 2200);
+}
+function buzz(p){
+  if(!cfg.vibrate) return;
+  try{ navigator.vibrate && navigator.vibrate(p); }catch(e){}
+}
+
+/* =========================================================
+   Voz: canta el marcador
+   ========================================================= */
+const TTS = ("speechSynthesis" in window);
+const PTW = ["cero","quince","treinta","cuarenta"];
+const NUMW = ["cero","uno","dos","tres","cuatro","cinco","seis","siete","ocho","nueve","diez","once","doce","trece","catorce","quince"];
+const nw = n => NUMW[n] !== undefined ? NUMW[n] : String(n);
+let voices = [];
+
+function loadVoices(){
+  if(!TTS) return;
+  try{ voices = speechSynthesis.getVoices() || []; }catch(e){ voices = []; }
+}
+if(TTS){
+  loadVoices();
+  speechSynthesis.onvoiceschanged = ()=>{ loadVoices(); renderVoiceSel(); };
+}
+function pickVoice(){
+  if(!voices.length) return null;
+  if(cfg.voiceName){
+    const v = voices.find(v=>v.name === cfg.voiceName);
+    if(v) return v;
+  }
+  return voices.find(v=>/^es/i.test(v.lang)) || null;
+}
+/** Cada bloque se dice del tirón; entre bloques, una coma: «cuarenta treinta, saca Luis desde la izquierda». */
+function say(txt, force, sep){
+  if(!TTS || (!cfg.voice && !force) || !txt) return;
+  const limpia = s => String(s).replace(/[.,;:]+/g, " ").replace(/\s+/g, " ").trim();
+  const mayus = s => s.charAt(0).toUpperCase() + s.slice(1);
+  let partes = (Array.isArray(txt) ? txt : [txt]).map(limpia).filter(Boolean);
+  if(!partes.length) return;
+  // sep "." separa frases enteras (pausa larga); por defecto, coma (pausa corta)
+  let frase = sep === "."
+    ? partes.map(mayus).join(". ") + "."
+    : mayus(partes.join(", ")) + ".";
+  try{
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(frase);
+    const v = pickVoice();
+    if(v){ u.voice = v; u.lang = v.lang; } else { u.lang = "es-ES"; }
+    u.rate = cfg.voiceRate || 1.05;
+    speechSynthesis.speak(u);
+  }catch(e){}
+}
+function shutUp(){ try{ TTS && speechSynthesis.cancel(); }catch(e){} }
+
+const serverName = () => { const s = serverOf(st); return cfg.players[s[0]][s[1]]; };
+
+/** Lado desde el que se saca: par = derecha, impar = izquierda. */
+function serveSide(){
+  const n = st.tiebreak ? (st.tb[0] + st.tb[1]) : (st.pts[0] + st.pts[1]);
+  return (n % 2 === 0) ? "derecha" : "izquierda";
+}
+/** «Saca Ismael desde la derecha», según lo que esté activado. */
+function serveLine(){
+  if(st.finished) return "";
+  if(cfg.voiceServer) return "saca " + serverName() + (cfg.voiceCourtSide ? " desde la " + serveSide() : "");
+  return cfg.voiceCourtSide ? "saque desde la " + serveSide() : "";
+}
+
+/** Tanteo del juego en curso, empezando por quien saca. */
+function pointsPhrase(){
+  const srv = serverOf(st)[0], rec = 1-srv;
+  if(st.tiebreak){
+    if(st.tb[srv] === st.tb[rec]) return "iguales a " + nw(st.tb[srv]);
+    return nw(st.tb[srv]) + " " + nw(st.tb[rec]);
+  }
+  const a = st.pts[srv], b = st.pts[rec];
+  if(a === 4) return "ventaja " + cfg.names[srv];
+  if(b === 4) return "ventaja " + cfg.names[rec];
+  if(a === 3 && b === 3) return cfg.golden ? "cuarenta iguales punto de oro" : "iguales";
+  if(a === b) return PTW[a] + " iguales";
+  return PTW[a] + " " + PTW[b];
+}
+function gamesPhrase(yaDicho){
+  const g = st.games;
+  if(g[0] === 0 && g[1] === 0) return "";
+  if(g[0] === g[1]) return "iguales a " + nw(g[0]);
+  const l = g[0] > g[1] ? 0 : 1;
+  return nw(g[l]) + " " + nw(g[1-l]) + (yaDicho === l ? "" : " para " + cfg.names[l]);
+}
+function setsPhrase(){
+  const [a,b] = st.setsWon;
+  if(a === b) return "empate a " + (a === 1 ? "un set" : nw(a) + " sets");
+  const l = a > b ? 0 : 1, n = st.setsWon[l];
+  return cfg.names[l] + " gana " + (n === 1 ? "un set a " : nw(n) + " sets a ") + nw(st.setsWon[1-l]);
+}
+
+/** Resultado hablado de un set: el super tie-break se canta por sus puntos, no por el juego. */
+function setScoreWords(s, t){
+  const sup = s[2] && (s[0] + s[1]) === 1;
+  const a = sup ? s[2][t] : s[t], b = sup ? s[2][1-t] : s[1-t];
+  return nw(a) + " " + nw(b);
+}
+
+function announce(t, ev){
+  if(!cfg.voice) return;
+  const p = [];
+  const cambio = (ev.side && !ev.match && cfg.voiceSwitch) ? "cambio de lado" : "";
+  if(ev.match){
+    p.push("juego set y partido para " + cfg.names[st.winner]);
+    p.push(st.sets.map(s => setScoreWords(s, st.winner)).join(" "));
+    return say(p, false, ".");
+  }else if(ev.set){
+    const s = st.sets[st.sets.length-1];
+    p.push("juego y set para " + cfg.names[t]);
+    p.push(setScoreWords(s, t));
+    p.push(setsPhrase());
+    if(ev.tbStart) p.push("se decide en super tie break a " + nw(st.tbTarget) + " puntos");
+    p.push(cambio);
+    p.push(serveLine());
+    return say(p, false, ".");
+  }else if(ev.game){
+    p.push("juego para " + cfg.names[t]);
+    p.push(gamesPhrase(t));
+    if(ev.tbStart) p.push("tie break");
+    p.push(cambio);
+    p.push(serveLine());
+    return say(p, false, ".");
+  }
+  // tanteo dentro del juego: una sola frase, separada por comas
+  p.push(pointsPhrase());
+  p.push(cambio);
+  p.push(serveLine());
+  for(let k=0;k<2;k++){
+    const s = stake(k);
+    if(s === "Punto de set" || s === "Punto de partido") p.push(s.toLowerCase() + " para " + cfg.names[k]);
+  }
+  say(p);
+}
+
+function updateVoiceBtn(){
+  const b = $("#btnVoice");
+  if(!b) return;
+  b.textContent = cfg.voice ? "🔊" : "🔇";
+  b.classList.toggle("on", !!cfg.voice);
+}
+function renderVoiceSel(){
+  const sel = $("#voiceSel");
+  if(!sel) return;
+  const es = voices.filter(v=>/^es/i.test(v.lang));
+  const rest = voices.filter(v=>!/^es/i.test(v.lang));
+  sel.innerHTML = "";
+  const auto = document.createElement("option");
+  auto.value = ""; auto.textContent = es.length ? "Automática (español)" : "Automática";
+  sel.appendChild(auto);
+  es.concat(rest).forEach(v=>{
+    const o = document.createElement("option");
+    o.value = v.name; o.textContent = v.name + " · " + v.lang;
+    sel.appendChild(o);
+  });
+  sel.value = cfg.voiceName || "";
+  $("#voiceWarn").textContent = !TTS
+    ? "Este navegador no tiene síntesis de voz."
+    : (voices.length ? "" : "Aún no hay voces cargadas; prueba a pulsar «Probar voz».");
+  $$("#segRate button").forEach(b=>{
+    b.classList.toggle("sel", Math.abs(+b.dataset.v - (cfg.voiceRate||1.05)) < .01);
+    b.onclick = ()=>{ cfg.voiceRate = +b.dataset.v; renderVoiceSel(); save(); say("treinta quince", true); };
+  });
+}
+
+/* reloj */
+function tickClock(){
+  if(!st.started){ $("#clock").textContent = "0:00"; return; }
+  const ms = (st.finished && st.elapsed) ? st.elapsed : Date.now()-st.started;
+  if(st.finished && !st.elapsed){ st.elapsed = ms; }
+  const s = Math.floor(ms/1000);
+  $("#clock").textContent = Math.floor(s/60) + ":" + String(s%60).padStart(2,"0");
+}
+setInterval(tickClock, 1000);
+
+/* =========================================================
+   Fin de partido
+   ========================================================= */
+function showWin(){
+  $("#winName").textContent = cfg.names[st.winner];
+  $("#winScore").textContent = scoreLine();
+  const mins = Math.round(((st.elapsed || (Date.now()-(st.started||Date.now())))/60000));
+  $("#winMeta").textContent = cfg.players[st.winner].join(" y ") + (mins ? " · " + mins + " min" : "");
+  openModal("winOverlay");
+}
+
+/* =========================================================
+   Entrada: mando, teclado, gamepad, teclas de medios
+   ========================================================= */
+let learning = null;
+
+function prettyKey(id){
+  if(!id) return "";
+  if(id.startsWith("pad:")) return "Mando " + id.slice(4);
+  if(id.startsWith("media:")) return "Medios " + id.slice(6);
+  const k = id.slice(4);
+  const map = {ArrowLeft:"←",ArrowRight:"→",ArrowUp:"↑",ArrowDown:"↓",Space:"Espacio",Enter:"Enter",
+    NumpadEnter:"Enter num",Backspace:"Borrar",AudioVolumeUp:"Vol +",AudioVolumeDown:"Vol −"};
+  return map[k] || k.replace(/^Key|^Digit/,"");
+}
+
+function fire(id){
+  logSignal(id);
+  if(learning){
+    const act = learning;
+    if(!cfg.binds[act].includes(id)) cfg.binds[act].push(id);
+    stopLearn(); renderBinds(); save();
+    toast(prettyKey(id) + " → " + BIND_INFO[act].label);
+    buzz(40);
+    return true;
+  }
+  for(const act in cfg.binds){
+    if(cfg.binds[act].includes(id)){ runAction(act); return true; }
+  }
+  // en modo un solo botón, cualquier señal típica de mando cuenta como pulsación
+  if(cfg.oneButton && esSenalDeMando(id)){ pressBurst(); return true; }
+  return false;
+}
+
+/** Señales que sólo puede mandar un pulsador (no tecleo normal). */
+function esSenalDeMando(id){
+  if(id.startsWith("media:") || id.startsWith("pad:")) return true;
+  return /^key:(Audio|Media|Launch|BrowserSearch|Enter|NumpadEnter|Space|Arrow|PageUp|PageDown|Camera|Select)/.test(id);
+}
+
+function runAction(act){
+  if(cfg.oneButton && (act==="single" || act==="pointA" || act==="pointB")){ pressBurst(); return; }
+  if(act==="pointA") addPoint(0,"remote");
+  else if(act==="pointB") addPoint(1,"remote");
+  else if(act==="undo") undo();
+  else if(act==="single") pressBurst();
+}
+
+/* --- modo un solo botón: 1 / 2 / 3 pulsaciones --- */
+let burst = 0, burstT = null;
+function pressBurst(){
+  burst++;
+  clearTimeout(burstT);
+  if(burst >= 3){ resolveBurst(); return; }   // tres: deshacer, sin esperar más
+  showHint(burst);
+  burstT = setTimeout(resolveBurst, cfg.burstWindow || 5000);
+}
+function resolveBurst(){
+  clearTimeout(burstT);
+  const n = burst; burst = 0; hideHint();
+  if(!n) return;
+  const srvTeam = serverOf(st)[0];
+  if(n === 1) addPoint(srvTeam, "remote");
+  else if(n === 2) addPoint(1-srvTeam, "remote");
+  else undo();
+}
+function burstText(n){
+  const srv = serverOf(st)[0];
+  if(n === 1) return "Punto para " + cfg.names[srv] + " · otra pulsación lo cambia";
+  if(n === 2) return "Punto para " + cfg.names[1-srv] + " · una más deshace";
+  return "Deshacer";
+}
+let hintT;
+function showHint(n){
+  const h = $("#pressHint");
+  h.querySelectorAll(".dot").forEach((d,i)=>d.classList.toggle("on", i < n));
+  h.querySelector(".txt").textContent = burstText(n);
+  const bar = h.querySelector(".bar i");
+  bar.style.animation = "none"; void bar.offsetWidth;
+  bar.style.animation = "burst " + (cfg.burstWindow || 5000) + "ms linear forwards";
+  h.classList.add("show"); clearTimeout(hintT);
+}
+function hideHint(){ hintT = setTimeout(()=>$("#pressHint").classList.remove("show"), 120); }
+
+/* --- teclado --- */
+addEventListener("keydown", e=>{
+  if(e.repeat) return;
+  const tag = (e.target && e.target.tagName) || "";
+  if(tag === "INPUT" || tag === "SELECT" || tag === "TEXTAREA") return;
+  const id = "key:" + (e.code || e.key);
+  const id2 = "key:" + e.key;
+  if(fire(id) || (id2 !== id && fire(id2))) e.preventDefault();
+}, true);
+
+/* --- gamepad (algunos pulsadores se ven como mando) --- */
+let padLoop = null;
+const padPrev = {};
+function startPadLoop(){
+  if(padLoop) return;
+  const poll = ()=>{
+    const pads = navigator.getGamepads ? navigator.getGamepads() : [];
+    let any = false;
+    for(const p of pads){
+      if(!p) continue;
+      any = true;
+      p.buttons.forEach((b,i)=>{
+        const k = p.index + ":" + i, down = b.pressed || b.value > .5;
+        if(down && !padPrev[k]) fire("pad:" + i);
+        padPrev[k] = down;
+      });
+    }
+    padLoop = requestAnimationFrame(poll);
+    if(!any && !learning){ cancelAnimationFrame(padLoop); padLoop = null; }
+  };
+  padLoop = requestAnimationFrame(poll);
+}
+addEventListener("gamepadconnected", e=>{ toast("Mando conectado: " + (e.gamepad.id||"").slice(0,24)); startPadLoop(); renderPadState(); });
+addEventListener("gamepaddisconnected", renderPadState);
+function renderPadState(){
+  const pads = (navigator.getGamepads ? Array.from(navigator.getGamepads()) : []).filter(Boolean);
+  $("#padState").textContent = pads.length
+    ? "Mando detectado: " + pads.map(p=>p.id.slice(0,30)).join(", ")
+    : "Ningún mando detectado como gamepad. Si tu pulsador actúa como teclado, usa Aprender.";
+}
+
+/* --- teclas de medios (play/pausa, siguiente/anterior) --- */
+let mediaOn = false, silent = null;
+/** Pista de audio casi inaudible: sin audio sonando, el sistema no manda las teclas de medios aquí. */
+function silentTrackUrl(){
+  const sr = 8000, n = sr * 2, buf = new ArrayBuffer(44 + n*2), v = new DataView(buf);
+  const w = (o,s)=>{ for(let i=0;i<s.length;i++) v.setUint8(o+i, s.charCodeAt(i)); };
+  w(0,"RIFF"); v.setUint32(4, 36+n*2, true); w(8,"WAVE"); w(12,"fmt ");
+  v.setUint32(16,16,true); v.setUint16(20,1,true); v.setUint16(22,1,true);
+  v.setUint32(24,sr,true); v.setUint32(28,sr*2,true); v.setUint16(32,2,true); v.setUint16(34,16,true);
+  w(36,"data"); v.setUint32(40, n*2, true);
+  for(let i=0;i<n;i++) v.setInt16(44+i*2, (i % 2) ? 1 : -1, true);  // amplitud mínima
+  return URL.createObjectURL(new Blob([buf], {type:"audio/wav"}));
+}
+
+function enableMedia(quiet){
+  if(mediaOn){ if(!quiet) toast("Las teclas de medios ya están activas"); return true; }
+  if(!("mediaSession" in navigator)){ if(!quiet) toast("Este navegador no admite teclas de medios"); return false; }
+  try{
+    const a = document.createElement("audio");
+    a.loop = true; a.volume = 0.03; a.preload = "auto";
+    a.setAttribute("playsinline","");
+    a.src = silentTrackUrl();
+    document.body.appendChild(a);
+    silent = a;
+    const p = a.play();
+    if(p && p.catch) p.catch(()=>{ if(!quiet) toast("Toca la pantalla y vuelve a activarlo"); });
+
+    navigator.mediaSession.metadata = new MediaMetadata({ title:"Marcador de Pádel", artist:"Mando a distancia" });
+    navigator.mediaSession.playbackState = "playing";
+    // cuantos más gestos capturemos, más mandos encajan
+    const H = {
+      play:"media:play", pause:"media:play", stop:"media:stop",
+      nexttrack:"media:next", previoustrack:"media:prev",
+      seekforward:"media:next", seekbackward:"media:prev",
+      seekto:"media:seek", skipad:"media:play"
+    };
+    for(const act in H){
+      try{ navigator.mediaSession.setActionHandler(act, ()=>{ fire(H[act]); return false; }); }catch(e){}
+    }
+    // si el sistema pausa la pista, la reanudamos: sin audio no llegan las teclas
+    a.addEventListener("pause", ()=>{ if(mediaOn) a.play().catch(()=>{}); });
+
+    mediaOn = true;
+    $("#btnMedia").textContent = "🎵 Teclas de medios activas";
+    $("#btnMedia").classList.add("primary");
+    if(!quiet) toast("Pulsa el botón del mando para probarlo");
+    return true;
+  }catch(e){ if(!quiet) toast("Este navegador no permite teclas de medios"); return false; }
+}
+
+function disableMedia(){
+  mediaOn = false;
+  try{
+    if(silent){ silent.pause(); silent.remove(); silent = null; }
+    if("mediaSession" in navigator){
+      navigator.mediaSession.playbackState = "none";
+      ["play","pause","stop","nexttrack","previoustrack","seekforward","seekbackward","seekto","skipad"]
+        .forEach(a=>{ try{ navigator.mediaSession.setActionHandler(a, null); }catch(e){} });
+    }
+  }catch(e){}
+  $("#btnMedia").textContent = "🎵 Activar teclas de medios";
+  $("#btnMedia").classList.remove("primary");
+  toast("Teclas de medios desactivadas");
+}
+
+/* --- diagnóstico: qué está llegando del mando --- */
+let señales = [];
+function logSignal(id){
+  señales.unshift(prettyKey(id));
+  señales = señales.slice(0,6);
+  const el = $("#signalLog");
+  if(el) el.innerHTML = "<b>Recibido:</b> " + señales.join(" · ");
+}
+
+/* =========================================================
+   Interfaz de ajustes
+   ========================================================= */
+function renderBurstSeg(){
+  $$("#segBurst button").forEach(b=>{
+    b.classList.toggle("sel", +b.dataset.v === (cfg.burstWindow||5000));
+    b.onclick = ()=>{
+      cfg.burstWindow = +b.dataset.v;
+      renderBurstSeg(); save();
+      toast("Se esperará " + (cfg.burstWindow/1000).toString().replace(".",",") + " s entre pulsaciones");
+    };
+  });
+}
+
+function renderBinds(){
+  renderBurstSeg();
+  const c = $("#binds");
+  c.innerHTML = "";
+  const order = cfg.oneButton ? ["single","undo"] : ["pointA","pointB","undo"];
+  order.forEach(act=>{
+    const row = document.createElement("div");
+    row.className = "bindrow";
+    const nm = document.createElement("div");
+    nm.className = "nm";
+    let label = BIND_INFO[act].label;
+    if(act === "pointA") label = "Punto · " + cfg.names[0];
+    if(act === "pointB") label = "Punto · " + cfg.names[1];
+    nm.innerHTML = "<b></b><small></small>";
+    nm.querySelector("b").textContent = label;
+    nm.querySelector("small").textContent = BIND_INFO[act].hint;
+    row.appendChild(nm);
+
+    const keys = document.createElement("div");
+    keys.className = "keys";
+    cfg.binds[act].forEach(id=>{
+      const k = document.createElement("button");
+      k.className = "keytag";
+      k.innerHTML = "<b></b> ✕";
+      k.firstChild.textContent = prettyKey(id);
+      k.title = "Quitar " + id;
+      k.onclick = ()=>{ cfg.binds[act] = cfg.binds[act].filter(x=>x!==id); renderBinds(); save(); };
+      keys.appendChild(k);
+    });
+    row.appendChild(keys);
+
+    const b = document.createElement("button");
+    b.className = "learn" + (learning===act ? " active" : "");
+    b.textContent = learning===act ? "Pulsa…" : "Aprender";
+    b.onclick = ()=>{ learning===act ? stopLearn() : startLearn(act); renderBinds(); };
+    row.appendChild(b);
+    c.appendChild(row);
+  });
+}
+function startLearn(act){ learning = act; startPadLoop(); toast("Pulsa el botón del mando para «"+BIND_INFO[act].label+"»"); }
+function stopLearn(){ learning = null; }
+
+function renderSwitches(){
+  $$(".sw[data-cfg]").forEach(sw=>{
+    sw.classList.toggle("on", !!cfg[sw.dataset.cfg]);
+    // toda la fila es zona de pulsación, no sólo el interruptor
+    const row = sw.closest(".toggle") || sw;
+    row.onclick = ()=>{
+      const k = sw.dataset.cfg;
+      cfg[k] = !cfg[k];
+      sw.classList.toggle("on", cfg[k]);
+      if(k === "oneButton"){
+        renderBinds();
+        if(cfg.oneButton){
+          // muchos pulsadores sólo hablan por teclas de medios: lo dejamos listo
+          ["media:play","media:next","media:prev","media:stop"].forEach(x=>{
+            if(!cfg.binds.single.includes(x)) cfg.binds.single.push(x);
+          });
+          renderBinds();
+          if(enableMedia(true)) toast("Modo un botón listo · teclas de medios activadas");
+        }
+      }
+      if(k === "wake") cfg.wake ? requestWake() : releaseWake();
+      if(k === "voice"){
+        updateVoiceBtn();
+        if(cfg.voice){ loadVoices(); renderVoiceSel(); say("voz activada cantaré el marcador", true); }
+        else shutUp();
+      }
+      if(k === "autoSwap" || k === "golden" || k === "tiebreak" || k === "superTb") render();
+      save();
+    };
+  });
+}
+
+const SETUP_FIELDS = ["#nameA","#nameB","#a1","#a2","#b1","#b2"];
+
+/** Rellena «saca primero» con los nombres actuales, sin perder lo elegido. */
+function renderServerSelect(){
+  const sel = $("#firstServer");
+  const prev = sel.value || cfg.firstServe.join(",");
+  sel.innerHTML = "";
+  [[0,0],[0,1],[1,0],[1,1]].forEach(([t,p])=>{
+    const o = document.createElement("option");
+    o.value = t+","+p;
+    o.textContent = cfg.players[t][p] + "  (" + cfg.names[t] + ")";
+    sel.appendChild(o);
+  });
+  sel.value = prev;
+  if(!sel.value) sel.value = "0,0";
+  cfg.firstServe = sel.value.split(",").map(Number);
+}
+
+function renderSetup(){
+  $("#nameA").value = cfg.names[0];
+  $("#nameB").value = cfg.names[1];
+  $("#a1").value = cfg.players[0][0]; $("#a2").value = cfg.players[0][1];
+  $("#b1").value = cfg.players[1][0]; $("#b2").value = cfg.players[1][1];
+  $("#firstServer").value = cfg.firstServe.join(",");
+  renderServerSelect();
+  $$("#segSets button").forEach(b=>{
+    b.classList.toggle("sel", +b.dataset.v === cfg.bestOf);
+    b.onclick = ()=>{ cfg.bestOf = +b.dataset.v; renderSetup(); save(); };
+  });
+  $("#btnBackMatch").style.display = (st.started && !st.finished) ? "" : "none";
+  renderSwitches();
+}
+
+/** Nombres escritos → configuración (se aplica al teclear, no al cerrar). */
+function readNames(){
+  const v = (id,def) => ($(id).value.trim() || def);
+  cfg.names = [v("#nameA","Pareja A"), v("#nameB","Pareja B")];
+  cfg.players = [
+    [v("#a1","Jugador 1"), v("#a2","Jugador 2")],
+    [v("#b1","Jugador 3"), v("#b2","Jugador 4")]
+  ];
+}
+function readSetup(){
+  readNames();
+  cfg.firstServe = $("#firstServer").value.split(",").map(Number);
+}
+
+/** Cada cambio en los nombres se guarda ya: desplegable, marcador y ajustes al día. */
+function applySetupNames(){
+  readNames();
+  renderServerSelect();
+  renderBinds();
+  render();
+  save();
+}
+
+/* ---------- modales ---------- */
+function openModal(id){ $("#"+id).classList.add("open"); }
+function closeModal(id){ $("#"+id).classList.remove("open"); stopLearn(); }
+
+/* ---------- pantalla encendida / completa ---------- */
+let wakeLock = null;
+async function requestWake(){
+  try{ if("wakeLock" in navigator) wakeLock = await navigator.wakeLock.request("screen"); }catch(e){}
+}
+function releaseWake(){ try{ wakeLock && wakeLock.release(); }catch(e){} wakeLock = null; }
+document.addEventListener("visibilitychange", ()=>{ if(document.visibilityState==="visible" && cfg.wake && !wakeLock) requestWake(); });
+
+function toggleFull(){
+  if(document.fullscreenElement) document.exitFullscreen();
+  else document.documentElement.requestFullscreen && document.documentElement.requestFullscreen().catch(()=>{});
+}
+
+/* =========================================================
+   Arranque
+   ========================================================= */
+function wire(){
+  $("#btnUndo").onclick = undo;
+  $("#btnRedo").onclick = redo;
+  $("#btnNew").onclick  = ()=>{ renderSetup(); openModal("setup"); };
+  $("#btnSwap").onclick = ()=>{ st.swapped = !st.swapped; render(); save(); };
+  $("#btnVoice").onclick = ()=>{
+    cfg.voice = !cfg.voice; updateVoiceBtn(); renderSwitches(); save();
+    if(cfg.voice){ loadVoices(); say("voz activada", true); toast("Voz activada"); }
+    else { shutUp(); toast("Voz desactivada"); }
+  };
+  $("#btnVoiceTest").onclick = ()=>{
+    loadVoices(); renderVoiceSel();
+    say(["treinta quince", serveLine() || "saca " + serverName()], true);
+  };
+  $("#voiceSel").onchange = e=>{ cfg.voiceName = e.target.value; save(); say("voz seleccionada", true); };
+  $("#btnFull").onclick = toggleFull;
+  $("#btnFull2").onclick = toggleFull;
+  $("#btnSwap2").onclick = ()=>{ st.swapped = !st.swapped; render(); save(); toast("Lados intercambiados"); };
+  $("#btnCfg").onclick  = ()=>{ renderBinds(); renderSwitches(); renderPadState(); loadVoices(); renderVoiceSel(); openModal("settings"); };
+
+  $("#btnStart").onclick = ()=>{
+    readSetup();
+    past=[]; future=[];
+    const sw = st.swapped;
+    st = newState(); st.swapped = sw;
+    if(cfg.superTb && cfg.bestOf === 1){ /* sin sentido en 1 set */ }
+    closeModal("setup");
+    render(); save();
+    if(cfg.wake) requestWake();
+    const first = cfg.players[cfg.firstServe[0]][cfg.firstServe[1]];
+    toast("Saca " + first);
+    if(cfg.voice) say(["empieza el partido", cfg.names[0] + " contra " + cfg.names[1],
+                       serveLine() || "saca " + first]);
+  };
+  $("#btnBackMatch").onclick = ()=>{
+    readSetup(); closeModal("setup"); render(); save(); toast("Nombres actualizados");
+  };
+  $("#btnSetupCfg").onclick = ()=>{ readSetup(); renderBinds(); renderSwitches(); renderPadState(); openModal("settings"); };
+
+  // los nombres se aplican mientras se escriben y al salir del campo:
+  // así el móvil no pierde lo escrito aunque el teclado se coma el primer toque
+  SETUP_FIELDS.forEach(id=>{
+    const el = $(id);
+    ["input","change","blur"].forEach(ev=> el.addEventListener(ev, applySetupNames));
+  });
+  $("#firstServer").addEventListener("change", ()=>{
+    cfg.firstServe = $("#firstServer").value.split(",").map(Number);
+    render(); save();
+  });
+
+  $("#btnCloseCfg").onclick = ()=>{ closeModal("settings"); render(); };
+  $("#btnEditMatch").onclick = ()=>{ closeModal("settings"); renderSetup(); openModal("setup"); };
+  $("#btnReset").onclick = ()=>{ if(confirm("¿Reiniciar el marcador a 0?")) resetScore(); };
+  $("#btnResetBinds").onclick = ()=>{ cfg.binds = defBinds(); renderBinds(); save(); toast("Teclas restauradas"); };
+  $("#btnMedia").onclick = ()=>{ mediaOn ? disableMedia() : enableMedia(); };
+
+  $("#btnWinNew").onclick  = ()=>{ closeModal("winOverlay"); renderSetup(); openModal("setup"); };
+  $("#btnWinBack").onclick = ()=>closeModal("winOverlay");
+
+  // evitar zoom por doble toque
+  let lastTouch = 0;
+  document.addEventListener("touchend", e=>{
+    const now = Date.now();
+    if(now - lastTouch < 300) e.preventDefault();
+    lastTouch = now;
+  }, {passive:false});
+}
+
+(function boot(){
+  initTeams();
+  wire();
+  const had = load();
+  renderSetup();
+  renderBinds();
+  renderSwitches();
+  renderVoiceSel();
+  updateVoiceBtn();
+  render();
+  if(!had) openModal("setup");
+  else if(cfg.wake) requestWake();
+  if(st.finished) showWin();
+  startPadLoop();
+})();
+</script>
+</body>
+</html>

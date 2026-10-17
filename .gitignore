@@ -1,0 +1,11 @@
+# Resultados de compilación: no hace falta subirlos
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/.idea/
+*.iml
+
+# Varios
+.DS_Store
+Thumbs.db
