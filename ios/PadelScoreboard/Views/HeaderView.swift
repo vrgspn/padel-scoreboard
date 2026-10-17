@@ -21,7 +21,7 @@ struct HeaderView: View {
             HStack(spacing: 6) {
                 IconButton(label: "↶", enabled: state.canUndo) { state.undo() }
                 IconButton(label: "↷", enabled: state.canRedo) { state.redo() }
-                IconButton(label: "✚", highlighted: true) { state.setScreen(.setup) }
+                IconButton(label: "✚", highlighted: true) { state.screen = .setup }
             }
 
             // derecha: voz y ajustes
@@ -30,7 +30,7 @@ struct HeaderView: View {
                 IconButton(label: state.cfg.voice ? "🔊" : "🔇", active: state.cfg.voice) {
                     state.toggleVoice()
                 }
-                IconButton(label: "⚙") { state.setScreen(.settings) }
+                IconButton(label: "⚙") { state.screen = .settings }
             }
             .frame(maxWidth: .infinity, alignment: .trailing)
         }

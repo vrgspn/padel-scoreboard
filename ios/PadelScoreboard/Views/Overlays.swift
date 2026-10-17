@@ -148,7 +148,7 @@ struct WinnerOverlay: View {
                             .font(.system(size: 14))
                             .multilineTextAlignment(.center)
                         Spacer().frame(height: 20)
-                        BigButton(text: "Nuevo partido", primary: true) { state.setScreen(.setup) }
+                        BigButton(text: "Nuevo partido", primary: true) { state.screen = .setup }
                         BigButton(text: "Deshacer el último punto") { state.undo() }
                     }
                     .frame(maxWidth: 560)

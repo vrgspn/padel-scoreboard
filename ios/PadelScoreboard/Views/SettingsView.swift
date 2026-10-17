@@ -114,11 +114,11 @@ struct SettingsView: View {
                 }
 
                 VStack(spacing: 0) {
-                    BigButton(text: "Volver al partido", primary: true) { state.setScreen(.match) }
-                    BigButton(text: "Editar parejas y formato") { state.setScreen(.setup) }
+                    BigButton(text: "Volver al partido", primary: true) { state.screen = .match }
+                    BigButton(text: "Editar parejas y formato") { state.screen = .setup }
                     BigButton(text: "Reiniciar marcador a 0", danger: true) {
                         state.resetScore()
-                        state.setScreen(.match)
+                        state.screen = .match
                     }
                 }
                 Spacer().frame(height: 24)

@@ -70,10 +70,6 @@ final class AppState: ObservableObject {
         applyKeepAwake()
     }
 
-    func setScreen(_ s: Screen) {
-        screen = s
-    }
-
     /// Evita que la pantalla se apague durante el partido.
     func applyKeepAwake() {
         UIApplication.shared.isIdleTimerDisabled = cfg.keepAwake

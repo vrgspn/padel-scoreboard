@@ -87,11 +87,11 @@ struct SetupView: View {
                     BigButton(text: "Empezar partido", primary: true) { state.startMatch() }
                     if match.startedAt > 0 && !match.finished {
                         BigButton(text: "Volver al partido en curso") {
-                            state.setScreen(.match)
+                            state.screen = .match
                             state.showToast("Nombres actualizados")
                         }
                     }
-                    BigButton(text: "Ajustes de sonido y mando ⚙") { state.setScreen(.settings) }
+                    BigButton(text: "Ajustes de sonido y mando ⚙") { state.screen = .settings }
                 }
                 Spacer().frame(height: 24)
             }
