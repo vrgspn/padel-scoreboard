@@ -52,7 +52,7 @@ fun WinnerOverlay(state: AppState) {
                 fontSize = with(LocalDensity.current) { 14.dp.toSp() }
             )
             Spacer(Modifier.height(20.dp))
-            BigButton("Nuevo partido", primary = true) { state.setScreen(Screen.SETUP) }
+            BigButton("Nuevo partido", primary = true) { state.screen = Screen.SETUP }
             BigButton("Deshacer el último punto") { state.undo() }
         }
     }

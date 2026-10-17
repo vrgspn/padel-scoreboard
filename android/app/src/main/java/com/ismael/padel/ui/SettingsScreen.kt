@@ -136,9 +136,9 @@ fun SettingsScreen(state: AppState) {
             }
         }
 
-        BigButton("Volver al partido", primary = true) { state.setScreen(Screen.MATCH) }
-        BigButton("Editar parejas y formato") { state.setScreen(Screen.SETUP) }
-        BigButton("Reiniciar marcador a 0", danger = true) { state.resetScore(); state.setScreen(Screen.MATCH) }
+        BigButton("Volver al partido", primary = true) { state.screen = Screen.MATCH }
+        BigButton("Editar parejas y formato") { state.screen = Screen.SETUP }
+        BigButton("Reiniciar marcador a 0", danger = true) { state.resetScore(); state.screen = Screen.MATCH }
         Spacer(Modifier.height(24.dp))
     }
 }

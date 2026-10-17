@@ -66,10 +66,6 @@ class AppState(app: Application) : AndroidViewModel(app) {
         store.saveCfg(cfg)
     }
 
-    fun setScreen(s: Screen) {
-        screen = s
-    }
-
     // ----------------------------------------------------------------- puntos
 
     fun addPoint(team: Int, fromRemote: Boolean = false) {

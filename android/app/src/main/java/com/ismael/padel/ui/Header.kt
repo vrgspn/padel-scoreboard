@@ -57,7 +57,7 @@ fun Header(state: AppState) {
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
             IconBtn("↶", enabled = state.canUndo) { state.undo() }
             IconBtn("↷", enabled = state.canRedo) { state.redo() }
-            IconBtn("✚", highlighted = true) { state.setScreen(Screen.SETUP) }
+            IconBtn("✚", highlighted = true) { state.screen = Screen.SETUP }
         }
 
         // derecha: voz y ajustes
@@ -68,7 +68,7 @@ fun Header(state: AppState) {
         ) {
             Spacer(Modifier.weight(1f))
             IconBtn(if (cfg.voice) "🔊" else "🔇", active = cfg.voice) { state.toggleVoice() }
-            IconBtn("⚙") { state.setScreen(Screen.SETTINGS) }
+            IconBtn("⚙") { state.screen = Screen.SETTINGS }
         }
     }
 }

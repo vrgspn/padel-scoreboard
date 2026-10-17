@@ -120,11 +120,11 @@ fun SetupScreen(state: AppState) {
         BigButton("Empezar partido", primary = true) { state.startMatch() }
         if (match.startedAt > 0L && !match.finished) {
             BigButton("Volver al partido en curso") {
-                state.setScreen(Screen.MATCH)
+                state.screen = Screen.MATCH
                 state.showToast("Nombres actualizados")
             }
         }
-        BigButton("Ajustes de sonido y mando ⚙") { state.setScreen(Screen.SETTINGS) }
+        BigButton("Ajustes de sonido y mando ⚙") { state.screen = Screen.SETTINGS }
         Spacer(Modifier.height(24.dp))
     }
 }
