@@ -11,7 +11,7 @@ Tiempo total la primera vez: unos 20 minutos, casi todo esperando.
 
 ```
 Padel Scoreboard\
-├─ padel-scoreboard.html      ← la versión web (sigue funcionando igual)
+├─ web\                       ← la versión web (sigue funcionando igual)
 ├─ android\                   ← la app Android, escrita en Kotlin
 ├─ ios\                       ← la app de iPhone y iPad, en Swift
 └─ .github\workflows\         ← las recetas para que GitHub compile las apps solas

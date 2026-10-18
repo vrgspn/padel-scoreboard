@@ -1,7 +1,7 @@
 # Marcador de Pádel · app nativa para iPhone y iPad
 
 App nativa en **Swift + SwiftUI**. Es el mismo desarrollo que la versión web
-(`padel-scoreboard.html`) y que la app Android de `android\`: mismas reglas, mismos
+(`web\padel-scoreboard.html`) y que la app Android de `android\`: mismas reglas, mismos
 textos, mismos colores y la misma voz.
 
 Funciona en iPhone y en iPad (universal), en vertical y en horizontal.

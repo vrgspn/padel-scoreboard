@@ -34,6 +34,8 @@ body{
   user-select:none;-webkit-user-select:none;
   touch-action:manipulation;
 }
+/* La página se queda el foco del teclado para recibir al mando: sin marco al enfocarla. */
+body:focus{outline:none}
 button{font-family:inherit;color:inherit;border:0;background:none;cursor:pointer}
 input,select{font-family:inherit}
 
@@ -368,7 +370,7 @@ label.fl.narrow{max-width:190px}
 }
 </style>
 </head>
-<body>
+<body tabindex="-1">
 
 <div id="app">
   <header>
@@ -514,13 +516,16 @@ label.fl.narrow{max-width:190px}
         <ol>
           <li>Empareja el pulsador Bluetooth con el móvil o tablet (aparece como teclado o mando).</li>
           <li>Pulsa <b>Aprender</b> en la acción que quieras, aprieta el botón del mando y quedará asignado. Abajo verás en verde lo que va llegando.</li>
-          <li><b>¿Sube o baja el volumen al pulsar?</b> Android se queda las teclas de volumen y la web nunca las ve, así que no hay forma de usarlas desde aquí. Tienes dos salidas:
+          <li><b>En Android, toca una vez la pantalla antes de usar el mando.</b> Las teclas sólo llegan si esta página tiene el foco del teclado. Si el mando deja de responder, vuelve a tocar el marcador.</li>
+          <li><b>¿Sube o baja el volumen al pulsar?</b> Android se queda las teclas de volumen y el navegador nunca las ve, así que no hay forma de usarlas desde aquí. Tienes tres salidas:
             <ul style="padding-left:16px;margin:6px 0">
               <li>Cambiar el mando (o el reloj) a <b>modo iOS</b> o <b>modo música/multimedia</b>: entonces manda <code>Enter</code> o teclas de medios, que sí se reciben.</li>
               <li>Pulsar <b>Activar teclas de medios</b> aquí y probar de nuevo: reproduce una pista muda para que el sistema envíe play/pausa y pista siguiente/anterior a esta página.</li>
+              <li>Si tu mando sólo sabe mandar volumen, usa la <b>app de Android</b> del marcador: una app sí puede quedarse esas teclas, una página web no.</li>
             </ul>
           </li>
           <li>Con un mando de un solo botón, activa <b>Modo un solo botón</b>: deja listas las teclas de medios y cualquier señal del pulsador cuenta como pulsación.</li>
+          <li>Para que no se apague nada a media partida, añade la página a la pantalla de inicio y ábrela desde ahí: se abre sin barra del navegador y el mando no pierde el foco.</li>
         </ol>
         Si abajo no aparece nada al apretar el mando, el sistema no está dejando pasar esa tecla: un toque en cada mitad de la pantalla siempre suma punto.
       </div>
@@ -1097,13 +1102,14 @@ function prettyKey(id){
   if(id.startsWith("pad:")) return "Mando " + id.slice(4);
   if(id.startsWith("media:")) return "Medios " + id.slice(6);
   const k = id.slice(4);
+  if(/^cod\d+$/.test(k)) return "Tecla nº " + k.slice(3);   // mandos que el navegador no sabe nombrar
   const map = {ArrowLeft:"←",ArrowRight:"→",ArrowUp:"↑",ArrowDown:"↓",Space:"Espacio",Enter:"Enter",
     NumpadEnter:"Enter num",Backspace:"Borrar",AudioVolumeUp:"Vol +",AudioVolumeDown:"Vol −"};
   return map[k] || k.replace(/^Key|^Digit/,"");
 }
 
-function fire(id){
-  logSignal(id);
+function fire(id, sinRegistro){
+  if(!sinRegistro) logSignal(id);
   if(learning){
     const act = learning;
     if(!cfg.binds[act].includes(id)) cfg.binds[act].push(id);
@@ -1123,7 +1129,7 @@ function fire(id){
 /** Señales que sólo puede mandar un pulsador (no tecleo normal). */
 function esSenalDeMando(id){
   if(id.startsWith("media:") || id.startsWith("pad:")) return true;
-  return /^key:(Audio|Media|Launch|BrowserSearch|Enter|NumpadEnter|Space|Arrow|PageUp|PageDown|Camera|Select)/.test(id);
+  return /^key:(Audio|Media|Launch|BrowserSearch|Enter|NumpadEnter|Space|Arrow|PageUp|PageDown|Camera|Select|Unidentified|cod\d)/.test(id);
 }
 
 function runAction(act){
@@ -1171,14 +1177,53 @@ function showHint(n){
 function hideHint(){ hintT = setTimeout(()=>$("#pressHint").classList.remove("show"), 120); }
 
 /* --- teclado --- */
+
+/** ¿Está el usuario escribiendo? Entonces el teclado no es del mando. */
+function escribiendo(el){
+  const tag = (el && el.tagName) || "";
+  return tag === "INPUT" || tag === "SELECT" || tag === "TEXTAREA" || (el && el.isContentEditable);
+}
+
+/**
+ * Nombres con los que puede llegar una misma tecla.
+ * Los pulsadores Bluetooth baratos mandan teclas que el navegador no sabe nombrar
+ * (code vacío, key "Unidentified"): para esos nos queda el número de tecla, que
+ * basta para reconocerlos con «Aprender».
+ */
+function idsDeTecla(e){
+  const ids = [];
+  if(e.code) ids.push("key:" + e.code);
+  if(e.key && e.key !== e.code) ids.push("key:" + e.key);
+  if((!e.code || e.key === "Unidentified") && e.keyCode) ids.push("key:cod" + e.keyCode);
+  return ids;
+}
+
 addEventListener("keydown", e=>{
   if(e.repeat) return;
-  const tag = (e.target && e.target.tagName) || "";
-  if(tag === "INPUT" || tag === "SELECT" || tag === "TEXTAREA") return;
-  const id = "key:" + (e.code || e.key);
-  const id2 = "key:" + e.key;
-  if(fire(id) || (id2 !== id && fire(id2))) e.preventDefault();
+  if(escribiendo(e.target)) return;
+  const ids = idsDeTecla(e);
+  if(!ids.length) return;
+  // una pulsación, una línea en el registro: el número de tecla es lo que más dice
+  logSignal(ids.find(i => /^key:cod\d+$/.test(i)) || ids[0]);
+  for(const id of ids){
+    if(fire(id, true)){ e.preventDefault(); return; }
+  }
 }, true);
+
+/* --- Android: mantener el foco del teclado en la página ---
+   El mando Bluetooth es un teclado: sus teclas sólo llegan aquí si la página tiene
+   el foco. Además, el botón que acabas de tocar con el dedo se queda enfocado y,
+   si no lo soltamos, el Enter del mando lo vuelve a pulsar en vez de sumar punto. */
+function recuperarFoco(){
+  const a = document.activeElement;
+  if(escribiendo(a)) return;
+  if(a && a !== document.body && a.blur) a.blur();
+  try{ document.body.focus({preventScroll:true}); }catch(e){ try{ document.body.focus(); }catch(e2){} }
+}
+document.addEventListener("pointerup", e=>{ if(!escribiendo(e.target)) recuperarFoco(); }, true);
+document.addEventListener("touchend",  e=>{ if(!escribiendo(e.target)) recuperarFoco(); }, true);
+document.addEventListener("visibilitychange", ()=>{ if(document.visibilityState === "visible") recuperarFoco(); });
+addEventListener("focus", recuperarFoco);
 
 /* --- gamepad (algunos pulsadores se ven como mando) --- */
 let padLoop = null;
@@ -1531,6 +1576,7 @@ function wire(){
   else if(cfg.wake) requestWake();
   if(st.finished) showWin();
   startPadLoop();
+  recuperarFoco();
 })();
 </script>
 </body>

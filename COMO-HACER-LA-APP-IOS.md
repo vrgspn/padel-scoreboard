@@ -19,7 +19,7 @@ Si no tienes Mac, ve directo al **camino B**.
 
 ```
 Padel Scoreboard\
-├─ padel-scoreboard.html      ← la versión web
+├─ web\                       ← la versión web
 ├─ android\                   ← la app Android, en Kotlin
 ├─ ios\                       ← la app de iPhone y iPad, en Swift
 └─ .github\workflows\         ← las recetas para que GitHub compile las apps solas
