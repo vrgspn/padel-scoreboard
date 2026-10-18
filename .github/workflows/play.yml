@@ -77,6 +77,25 @@ jobs:
           git commit -m "Log del último error al preparar Play [skip ci]"
           git push origin HEAD:main
 
+      # Deja constancia de con qué certificado se ha firmado (datos públicos, sin secretos)
+      - name: Comprobar la firma del paquete
+        shell: bash
+        run: |
+          mkdir -p logs
+          AAB=$(ls android/app/build/outputs/bundle/release/*.aab | head -1)
+          {
+            echo "Paquete: $(basename "$AAB")"
+            echo "Tamaño: $(du -h "$AAB" | cut -f1)"
+            echo
+            keytool -printcert -jarfile "$AAB"
+          } > logs/firma-del-paquete.txt 2>&1 || true
+          cat logs/firma-del-paquete.txt
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add -f logs/firma-del-paquete.txt
+          git commit -m "Datos de firma del paquete [skip ci]" || true
+          git push origin HEAD:main || true
+
       - name: Borrar la clave del disco
         if: always()
         run: rm -f android/upload-keystore.p12
