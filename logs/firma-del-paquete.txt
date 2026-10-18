@@ -1,0 +1,42 @@
+Paquete: app-release.aab
+Tamaño: 6.0M
+
+Signer #1:
+
+Certificate #1:
+Owner: C=ES, O=Ismael Vargas, CN=Marcador de Padel
+Issuer: C=ES, O=Ismael Vargas, CN=Marcador de Padel
+Serial number: 789d559266ac48a1077121d0059c2cc4c67e8f31
+Valid from: Sun Oct 18 00:23:59 UTC 2026 until: Tue Oct 10 00:23:59 UTC 2056
+Certificate fingerprints:
+	 SHA1: 4B:F0:02:74:3E:3E:D0:4C:92:17:C8:67:98:26:E4:CB:5D:32:26:91
+	 SHA256: 69:59:24:1D:4C:1B:53:28:FA:46:6A:45:9B:84:53:B6:7E:EA:C6:C5:C0:B7:62:EE:41:A8:64:B1:2E:70:C3:88
+Signature algorithm name: SHA256withRSA
+Subject Public Key Algorithm: 4096-bit RSA key
+Version: 3
+
+Extensions: 
+
+#1: ObjectId: 2.5.29.35 Criticality=false
+AuthorityKeyIdentifier [
+KeyIdentifier [
+0000: 58 7E E2 C4 7D 71 71 1F   AE 4E BC A1 DE 2E FD A2  X....qq..N......
+0010: 91 E3 42 FE                                        ..B.
+]
+]
+
+#2: ObjectId: 2.5.29.19 Criticality=true
+BasicConstraints:[
+  CA:true
+  PathLen: no limit
+]
+
+#3: ObjectId: 2.5.29.14 Criticality=false
+SubjectKeyIdentifier [
+KeyIdentifier [
+0000: 58 7E E2 C4 7D 71 71 1F   AE 4E BC A1 DE 2E FD A2  X....qq..N......
+0010: 91 E3 42 FE                                        ..B.
+]
+]
+
+
