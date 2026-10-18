@@ -1,4 +1,4 @@
-package com.ismael.padel
+package com.vrgspn.marcadorpadel
 
 /**
  * Estado y reglas del partido. Es una traducción directa de la versión web:

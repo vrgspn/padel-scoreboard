@@ -1,4 +1,4 @@
-package com.ismael.padel.ui
+package com.vrgspn.marcadorpadel.ui
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
@@ -30,9 +30,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.ismael.padel.AppState
-import com.ismael.padel.Rules
-import com.ismael.padel.Screen
+import com.vrgspn.marcadorpadel.AppState
+import com.vrgspn.marcadorpadel.Rules
+import com.vrgspn.marcadorpadel.Screen
 
 @Composable
 fun Header(state: AppState) {

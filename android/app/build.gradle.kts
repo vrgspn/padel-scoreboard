@@ -10,11 +10,11 @@ val keystoreFile = rootProject.file("upload-keystore.p12")
 val hasKeystore = keystoreFile.exists()
 
 android {
-    namespace = "com.ismael.padel"
+    namespace = "com.vrgspn.marcadorpadel"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.ismael.padel"
+        applicationId = "com.vrgspn.marcadorpadel"
         minSdk = 26
         targetSdk = 36
         versionCode = 1

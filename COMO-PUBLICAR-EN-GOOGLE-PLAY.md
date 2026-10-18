@@ -254,7 +254,7 @@ Este es el paso largo y donde encalla todo el mundo.
    (o uno nuevo con número mayor) → revisa la ficha → **Enviar a revisión**.
 3. La primera revisión suele tardar entre unas horas y 7 días.
 4. Cuando la aprueben, la app aparece en Play en
-   `https://play.google.com/store/apps/details?id=com.ismael.padel`.
+   `https://play.google.com/store/apps/details?id=com.vrgspn.marcadorpadel`.
 
 ---
 

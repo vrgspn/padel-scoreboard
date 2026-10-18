@@ -1,4 +1,4 @@
-package com.ismael.padel
+package com.vrgspn.marcadorpadel
 
 import android.app.Application
 import android.os.Build

@@ -1,4 +1,4 @@
-package com.ismael.padel.ui
+package com.vrgspn.marcadorpadel.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border

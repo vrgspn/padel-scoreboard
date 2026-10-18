@@ -1,4 +1,4 @@
-package com.ismael.padel.ui
+package com.vrgspn.marcadorpadel.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -17,8 +17,8 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.ismael.padel.AppState
-import com.ismael.padel.Screen
+import com.vrgspn.marcadorpadel.AppState
+import com.vrgspn.marcadorpadel.Screen
 
 /** Se muestra al acabar el partido, con el resultado y el tiempo jugado. */
 @Composable

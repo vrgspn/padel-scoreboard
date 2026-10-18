@@ -1,4 +1,4 @@
-package com.ismael.padel.ui
+package com.vrgspn.marcadorpadel.ui
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.keyframes
@@ -39,9 +39,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.material3.Text
-import com.ismael.padel.AppState
-import com.ismael.padel.Match
-import com.ismael.padel.Rules
+import com.vrgspn.marcadorpadel.AppState
+import com.vrgspn.marcadorpadel.Match
+import com.vrgspn.marcadorpadel.Rules
 import kotlin.math.min
 
 /** Pantalla del marcador: dos cuadros, uno por pareja. */

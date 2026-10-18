@@ -1,4 +1,4 @@
-package com.ismael.padel.ui
+package com.vrgspn.marcadorpadel.ui
 
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp

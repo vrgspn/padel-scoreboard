@@ -1,4 +1,4 @@
-package com.ismael.padel
+package com.vrgspn.marcadorpadel
 
 import android.os.Bundle
 import android.view.KeyEvent
@@ -14,14 +14,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.ismael.padel.ui.BannerOverlay
-import com.ismael.padel.ui.BurstOverlay
-import com.ismael.padel.ui.MatchScreen
-import com.ismael.padel.ui.P
-import com.ismael.padel.ui.SettingsScreen
-import com.ismael.padel.ui.SetupScreen
-import com.ismael.padel.ui.ToastOverlay
-import com.ismael.padel.ui.WinnerOverlay
+import com.vrgspn.marcadorpadel.ui.BannerOverlay
+import com.vrgspn.marcadorpadel.ui.BurstOverlay
+import com.vrgspn.marcadorpadel.ui.MatchScreen
+import com.vrgspn.marcadorpadel.ui.P
+import com.vrgspn.marcadorpadel.ui.SettingsScreen
+import com.vrgspn.marcadorpadel.ui.SetupScreen
+import com.vrgspn.marcadorpadel.ui.ToastOverlay
+import com.vrgspn.marcadorpadel.ui.WinnerOverlay
 
 /**
  * Única pantalla de la app. Aquí se capturan las teclas del mando:
