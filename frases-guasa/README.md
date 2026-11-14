@@ -19,6 +19,14 @@ Huecos que se rellenan solos:
 
 ## Añadir o cambiar frases
 
+El marcador solo sabe **quién** gana el punto, el juego o el partido, no **cómo**.
+Ninguna frase puede dar por hecho lo que ha pasado en la pista: ni el golpe
+(bandeja, víbora, remate, globo, dejada…), ni por dónde ha ido la bola (red,
+cristal, por el medio, por cuatro…), ni si ha sido error o golpe ganador, ni si
+el juego o el partido han sido una paliza o muy igualados. Tampoco si es el
+primer juego perdido o ya van varios («otro juego más»). Como `{g}` y `{p}` se
+eligen al azar, mejor no echarle a uno solo la culpa del punto.
+
 1. Edita `frases.js` (sin comillas dobles, barras invertidas ni el signo del dólar).
 2. Desde la carpeta del proyecto:
 
