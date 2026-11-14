@@ -54,8 +54,14 @@ final class AppState: ObservableObject {
         match = store.loadMatch()
         Haptics.prepare()
         RemoteKeys.shared.volumeKeysEnabled = cfg.volumeKeys
-        RemoteKeys.shared.onSignal = { [weak self] label in
-            Task { @MainActor in self?.remoteSignal(label) }
+        RemoteKeys.shared.onSignal = { [weak self] label, phase in
+            Task { @MainActor in
+                switch phase {
+                case .down: self?.remoteDown(label)
+                case .up: self?.remoteUp(label)
+                case .tap: self?.remoteTap(label)
+                }
+            }
         }
         RemoteKeys.shared.start()
         applyKeepAwake()
@@ -92,7 +98,6 @@ final class AppState: ObservableObject {
 
         let (after, ev) = Rules.applyPoint(m, team, cfg)
         m = after
-        if ev.side && cfg.autoSwap { m.swapped.toggle() }
         if ev.match { m.elapsed = t - (m.startedAt > 0 ? m.startedAt : t) }
         match = m
         store.saveMatch(m)
@@ -103,7 +108,10 @@ final class AppState: ObservableObject {
 
         if cfg.voice {
             let (parts, asSentences) = Phrases.announce(m, team, ev, cfg)
-            speech.say(parts, rate: cfg.voiceRate, asSentences: asSentences)
+            speech.say(
+                parts, rate: cfg.voiceRate, asSentences: asSentences,
+                extra: Guasa.phrase(winner: team, ev, cfg)
+            )
         }
 
         if ev.match {
@@ -159,7 +167,7 @@ final class AppState: ObservableObject {
     func resetScore() {
         past.removeAll()
         future.removeAll()
-        match = Match(swapped: match.swapped)
+        match = Match()
         store.saveMatch(match)
         showToast("Marcador a cero")
     }
@@ -167,7 +175,7 @@ final class AppState: ObservableObject {
     func startMatch() {
         past.removeAll()
         future.removeAll()
-        match = Match(swapped: match.swapped)
+        match = Match()
         store.saveMatch(match)
         screen = .match
         let first = cfg.players[cfg.firstServeTeam][cfg.firstServePlayer]
@@ -185,11 +193,6 @@ final class AppState: ObservableObject {
         }
     }
 
-    func swapSides() {
-        match.swapped.toggle()
-        store.saveMatch(match)
-    }
-
     func scoreLine() -> String {
         match.sets.map { s in
             "\(s.a)-\(s.b)" + (s.hadTiebreak ? "(\(min(s.tbA, s.tbB)))" : "")
@@ -198,35 +201,105 @@ final class AppState: ObservableObject {
 
     // ------------------------------------------------------------------ mando
 
-    /// Llega una señal del mando (volumen, pulsador emparejado como teclado…).
-    func remoteSignal(_ label: String) {
-        lastSignal = label
-        if cfg.oneButton {
-            pressBurst()
-            return
-        }
-        // sin modo un botón, bajar volumen es la pareja de la izquierda
-        // y subirlo la de la derecha
-        let left = match.swapped ? 1 : 0
+    /*
+     Mando de un botón, pensado para que no salten puntos en el bolsillo:
+       1 pulsación          → no cuenta
+       2 pulsaciones        → punto para la pareja de la izquierda (A)
+       3 pulsaciones        → punto para la pareja de la derecha (B)
+       4 o más              → no cuenta
+       mantener 3 segundos  → deshacer
+     Las pulsaciones se cuentan al soltar y se resuelven cuando pasa la espera
+     entre pulsaciones sin que llegue otra.
+     */
+
+    static let holdUndoMs: Double = 3000
+    /// Hueco máximo entre saltos de volumen para considerarlos el mismo botón mantenido.
+    private static let streamGapMs: Double = 700
+
+    private var holdTask: Task<Void, Never>?
+    private var holdFired = false
+    private var keyHeld = false
+    private var streamStart: Double = 0
+    private var streamLast: Double = 0
+    private var streamUndone = false
+
+    /// Sin modo un botón, bajar volumen es la pareja A (izquierda) y subirlo la B (derecha).
+    private func directTeam(_ label: String) -> Int? {
+        guard !cfg.oneButton else { return nil }
         switch label {
-        case "Volumen −", "Izquierda":
-            addPoint(left, fromRemote: true)
-        case "Volumen +", "Derecha":
-            addPoint(1 - left, fromRemote: true)
-        default:
-            pressBurst()
+        case "Volumen −", "Izquierda": return 0
+        case "Volumen +", "Derecha": return 1
+        default: return nil
         }
     }
 
-    private func pressBurst() {
-        burstTask?.cancel()
-        burstCount += 1
-        burstId = now
-        if burstCount >= 3 {
-            burstCount = 0
-            undo()
+    /// Se aprieta un botón del mando (pulsador emparejado como teclado).
+    func remoteDown(_ label: String) {
+        lastSignal = label
+        if let team = directTeam(label) {
+            addPoint(team, fromRemote: true)
             return
         }
+        keyHeld = true
+        holdFired = false
+        burstTask?.cancel()              // mientras está apretado no se resuelve nada
+        holdTask?.cancel()
+        holdTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: UInt64(AppState.holdUndoMs * 1_000_000))
+            if Task.isCancelled { return }
+            guard let self else { return }
+            self.holdFired = true
+            self.holdUndo()
+        }
+    }
+
+    /// Se suelta el botón del mando.
+    func remoteUp(_ label: String) {
+        if directTeam(label) != nil || !keyHeld { return }
+        keyHeld = false
+        holdTask?.cancel()
+        if holdFired {                   // fue un «mantener»: ya se deshizo
+            holdFired = false
+            if burstCount > 0 { restartBurstWait() }
+            return
+        }
+        burstCount += 1
+        restartBurstWait()
+    }
+
+    /// Pulsación sin suelta conocida (saltos de volumen). Mantener el botón
+    /// llega como una ráfaga continua de saltos: si dura 3 s, se deshace.
+    func remoteTap(_ label: String) {
+        lastSignal = label
+        if let team = directTeam(label) {
+            addPoint(team, fromRemote: true)
+            return
+        }
+        let t = now
+        if t - streamLast > AppState.streamGapMs {
+            streamStart = t
+            streamUndone = false
+        }
+        streamLast = t
+        if streamUndone { return }
+        if t - streamStart >= AppState.holdUndoMs {
+            streamUndone = true
+            holdUndo()
+            return
+        }
+        burstCount += 1
+        restartBurstWait()
+    }
+
+    private func holdUndo() {
+        burstTask?.cancel()
+        burstCount = 0
+        if canUndo { undo() } else { showToast("Nada que deshacer") }
+    }
+
+    private func restartBurstWait() {
+        burstId = now
+        burstTask?.cancel()
         let window = UInt64(max(cfg.burstWindowMs, 200) * 1_000_000)
         burstTask = Task { [weak self] in
             try? await Task.sleep(nanoseconds: window)
@@ -234,18 +307,21 @@ final class AppState: ObservableObject {
             guard let self else { return }
             let n = self.burstCount
             self.burstCount = 0
-            let srv = Rules.serverOf(self.match, self.cfg).team
-            if n == 1 { self.addPoint(srv, fromRemote: true) }
-            if n == 2 { self.addPoint(1 - srv, fromRemote: true) }
+            switch n {
+            case 2: self.addPoint(0, fromRemote: true)
+            case 3: self.addPoint(1, fromRemote: true)
+            case 1: break                // una sola pulsación: probablemente el bolsillo
+            default: self.showToast("Demasiadas pulsaciones: no se apunta nada")
+            }
         }
     }
 
     func burstText(_ n: Int) -> String {
-        let srv = Rules.serverOf(match, cfg).team
         switch n {
-        case 1: return "Punto para " + cfg.names[srv] + " · otra pulsación lo cambia"
-        case 2: return "Punto para " + cfg.names[1 - srv] + " · una más deshace"
-        default: return "Deshacer"
+        case 1: return "Una pulsación no cuenta · 2 = " + cfg.names[0] + " · 3 = " + cfg.names[1]
+        case 2: return "Punto para " + cfg.names[0] + " · una más: " + cfg.names[1]
+        case 3: return "Punto para " + cfg.names[1]
+        default: return "Demasiadas pulsaciones: no se apuntará"
         }
     }
 

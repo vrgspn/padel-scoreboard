@@ -7,12 +7,13 @@ enum Rules {
 
     static func setsNeeded(_ cfg: Cfg) -> Int { (cfg.bestOf + 1) / 2 }
 
-    /// Orden de saque: A1 → B1 → A2 → B2, empezando por el jugador elegido.
+    /// Orden de saque: empieza el jugador elegido; luego el de la derecha (1) de la otra pareja,
+    /// el compañero del primero y, por último, el de la izquierda (0) de la otra pareja.
     static func serveOrder(_ cfg: Cfg) -> [(team: Int, player: Int)] {
         let t = cfg.firstServeTeam
         let p = cfg.firstServePlayer
         let o = 1 - t
-        return [(t, p), (o, p), (t, 1 - p), (o, 1 - p)]
+        return [(t, p), (o, 1), (t, 1 - p), (o, 0)]
     }
 
     static func serverOf(_ m: Match, _ cfg: Cfg) -> (team: Int, player: Int) {

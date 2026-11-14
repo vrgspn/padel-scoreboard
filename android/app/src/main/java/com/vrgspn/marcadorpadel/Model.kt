@@ -22,7 +22,6 @@ data class Match(
     val tb: List<Int> = listOf(0, 0),
     val tbTarget: Int = 7,
     val tbStartIdx: Int = 0,
-    val swapped: Boolean = false,
     val startedAt: Long = 0L,
     val elapsed: Long = 0L,
     val finished: Boolean = false,
@@ -38,12 +37,22 @@ data class Events(
     val tbStart: Boolean = false
 )
 
+/** Nombres por defecto: en cada pareja, el de la izquierda (0) y el de la derecha (1). */
+val DEFAULT_PLAYERS = listOf(
+    listOf("Izquierda A", "Derecha A"),
+    listOf("Izquierda B", "Derecha B")
+)
+
+/** Nombres por defecto de versiones anteriores, que se cambian al cargar. */
+val OLD_DEFAULT_PLAYERS = listOf(
+    listOf("Jugador 1", "Jugador 2"),
+    listOf("Jugador 3", "Jugador 4")
+)
+
 data class Cfg(
     val names: List<String> = listOf("Nosotros", "Ellos"),
-    val players: List<List<String>> = listOf(
-        listOf("Jugador 1", "Jugador 2"),
-        listOf("Jugador 3", "Jugador 4")
-    ),
+    /** Por pareja: [jugador de la izquierda, jugador de la derecha]. */
+    val players: List<List<String>> = DEFAULT_PLAYERS,
     val firstServeTeam: Int = 0,
     val firstServePlayer: Int = 0,
     val bestOf: Int = 3,
@@ -60,10 +69,11 @@ data class Cfg(
     val voiceCourtSide: Boolean = true,
     val voiceSwitch: Boolean = true,
     val voiceRate: Float = 1.05f,
-    // pantalla
+    /** Modo guasa: tras el tanteo, a veces se mete con quien pierde o alaba a quien gana. */
+    val guasa: Boolean = false,
+    // pantalla (la pareja A siempre a la izquierda y la B a la derecha)
     val vibrate: Boolean = true,
     val keepAwake: Boolean = true,
-    val autoSwap: Boolean = false,
     val sideAlert: Boolean = true
 )
 
@@ -73,12 +83,15 @@ object Rules {
 
     fun setsNeeded(cfg: Cfg) = (cfg.bestOf + 1) / 2
 
-    /** Orden de saque: A1 → B1 → A2 → B2, empezando por el jugador elegido. */
+    /**
+     * Orden de saque: empieza el jugador elegido; luego el de la derecha (1) de la otra pareja,
+     * el compañero del primero y, por último, el de la izquierda (0) de la otra pareja.
+     */
     fun serveOrder(cfg: Cfg): List<Pair<Int, Int>> {
         val t = cfg.firstServeTeam
         val p = cfg.firstServePlayer
         val o = 1 - t
-        return listOf(t to p, o to p, t to (1 - p), o to (1 - p))
+        return listOf(t to p, o to 1, t to (1 - p), o to 0)
     }
 
     fun serverOf(m: Match, cfg: Cfg): Pair<Int, Int> {

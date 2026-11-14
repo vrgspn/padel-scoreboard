@@ -37,6 +37,7 @@ struct SettingsView: View {
                         subtitle: "Dice «cambio de lado» cuando toca cambiar de pista.",
                         isOn: cfg.voiceSwitch
                     ) { v in state.updateCfg { var c = $0; c.voiceSwitch = v; return c } }
+                    GuasaSwitch()
                     SwitchRow(
                         title: "Vibrar al apuntar",
                         subtitle: "Confirmación táctil al sumar cada punto.",
@@ -63,7 +64,7 @@ struct SettingsView: View {
                     ) { v in state.updateCfg { var c = $0; c.volumeKeys = v; return c } }
                     SwitchRow(
                         title: "Modo un solo botón",
-                        subtitle: "Para pulsadores con un único botón: 1 pulsación = punto para quien saca · 2 pulsaciones = punto para quien resta · 3 pulsaciones = deshacer.",
+                        subtitle: "Para pulsadores con un único botón: 2 pulsaciones = punto para la pareja de la izquierda · 3 pulsaciones = punto para la de la derecha · mantener 3 segundos = deshacer. Una sola pulsación no cuenta, para que no salten puntos en el bolsillo.",
                         isOn: cfg.oneButton
                     ) { v in state.updateCfg { var c = $0; c.oneButton = v; return c } }
 
@@ -77,8 +78,8 @@ struct SettingsView: View {
                     ) { v in state.updateCfg { var c = $0; c.burstWindowMs = v; return c } }
                     Spacer().frame(height: 8)
                     Help(
-                        "Tiempo que se espera otra pulsación antes de apuntar. Súbelo si tu pulsador tarda en responder; "
-                        + "bájalo si quieres que el punto entre al instante. Con tres pulsaciones no se espera."
+                        "Las pulsaciones tienen que ir seguidas, sin dejar pasar este tiempo entre una y otra; "
+                        + "pasado este tiempo sin otra pulsación, se apunta el punto. Bájalo si quieres que el punto entre antes."
                     )
                     if !state.lastSignal.isEmpty {
                         Spacer().frame(height: 10)
@@ -100,17 +101,10 @@ struct SettingsView: View {
                         isOn: cfg.keepAwake
                     ) { v in state.updateCfg { var c = $0; c.keepAwake = v; return c } }
                     SwitchRow(
-                        title: "Intercambiar lados automáticamente",
-                        subtitle: "Al cambiar de lado en la pista, las parejas también cambian en el marcador.",
-                        isOn: cfg.autoSwap
-                    ) { v in state.updateCfg { var c = $0; c.autoSwap = v; return c } }
-                    SwitchRow(
                         title: "Avisar del cambio de lado",
-                        subtitle: "Muestra un cartel cuando toca cambiar.",
+                        subtitle: "Muestra un cartel cuando toca cambiar. El marcador no se mueve: la pareja A siempre a la izquierda y la B a la derecha.",
                         isOn: cfg.sideAlert
                     ) { v in state.updateCfg { var c = $0; c.sideAlert = v; return c } }
-                    Spacer().frame(height: 12)
-                    SmallButton(text: "⇄  Intercambiar lados") { state.swapSides() }
                 }
 
                 VStack(spacing: 0) {
@@ -128,5 +122,19 @@ struct SettingsView: View {
             .padding(16)
         }
         .background(P.bg)
+    }
+}
+
+/// Modo guasa. Está en el alta del partido y en Ajustes; activarlo enciende también la voz.
+struct GuasaSwitch: View {
+
+    @EnvironmentObject private var state: AppState
+
+    var body: some View {
+        SwitchRow(
+            title: "Modo guasa 😈",
+            subtitle: "Tras el tanteo, de vez en cuando (uno de cada cuatro puntos, al azar) se mete con quien pierde el punto o pone por las nubes a quien lo gana. Al acabar cada juego, set y partido, siempre. Activa la voz.",
+            isOn: state.cfg.guasa
+        ) { v in state.updateCfg { var c = $0; c.guasa = v; c.voice = c.voice || v; return c } }
     }
 }

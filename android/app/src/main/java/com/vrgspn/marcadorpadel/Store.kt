@@ -27,9 +27,9 @@ class Store(context: Context) {
         j.put("voiceCourtSide", cfg.voiceCourtSide)
         j.put("voiceSwitch", cfg.voiceSwitch)
         j.put("voiceRate", cfg.voiceRate.toDouble())
+        j.put("guasa", cfg.guasa)
         j.put("vibrate", cfg.vibrate)
         j.put("keepAwake", cfg.keepAwake)
-        j.put("autoSwap", cfg.autoSwap)
         j.put("sideAlert", cfg.sideAlert)
         prefs.edit().putString("cfg", j.toString()).apply()
     }
@@ -43,10 +43,13 @@ class Store(context: Context) {
             val players = j.optJSONArray("players")
             Cfg(
                 names = if (names != null) listOf(names.getString(0), names.getString(1)) else d.names,
-                players = if (players != null) listOf(
-                    listOf(players.getJSONArray(0).getString(0), players.getJSONArray(0).getString(1)),
-                    listOf(players.getJSONArray(1).getString(0), players.getJSONArray(1).getString(1))
-                ) else d.players,
+                players = if (players != null) List(2) { t ->
+                    List(2) { i ->
+                        val n = players.getJSONArray(t).getString(i)
+                        // los nombres por defecto de antes (Jugador 1…4) pasan a izquierda/derecha
+                        if (n == OLD_DEFAULT_PLAYERS[t][i]) DEFAULT_PLAYERS[t][i] else n
+                    }
+                } else d.players,
                 firstServeTeam = j.optInt("firstServeTeam", d.firstServeTeam),
                 firstServePlayer = j.optInt("firstServePlayer", d.firstServePlayer),
                 bestOf = j.optInt("bestOf", d.bestOf),
@@ -61,9 +64,9 @@ class Store(context: Context) {
                 voiceCourtSide = j.optBoolean("voiceCourtSide", d.voiceCourtSide),
                 voiceSwitch = j.optBoolean("voiceSwitch", d.voiceSwitch),
                 voiceRate = j.optDouble("voiceRate", d.voiceRate.toDouble()).toFloat(),
+                guasa = j.optBoolean("guasa", d.guasa),
                 vibrate = j.optBoolean("vibrate", d.vibrate),
                 keepAwake = j.optBoolean("keepAwake", d.keepAwake),
-                autoSwap = j.optBoolean("autoSwap", d.autoSwap),
                 sideAlert = j.optBoolean("sideAlert", d.sideAlert)
             )
         } catch (e: Exception) {
@@ -88,7 +91,6 @@ class Store(context: Context) {
         j.put("tb", JSONArray(m.tb))
         j.put("tbTarget", m.tbTarget)
         j.put("tbStartIdx", m.tbStartIdx)
-        j.put("swapped", m.swapped)
         j.put("startedAt", m.startedAt)
         j.put("elapsed", m.elapsed)
         j.put("finished", m.finished)
@@ -120,7 +122,6 @@ class Store(context: Context) {
                 tb = ints("tb", listOf(0, 0)),
                 tbTarget = j.optInt("tbTarget", 7),
                 tbStartIdx = j.optInt("tbStartIdx", 0),
-                swapped = j.optBoolean("swapped", false),
                 startedAt = j.optLong("startedAt", 0L),
                 elapsed = j.optLong("elapsed", 0L),
                 finished = j.optBoolean("finished", false),

@@ -67,7 +67,10 @@ struct BurstOverlay: View {
                 HStack(spacing: 10) {
                     ForEach(0..<3, id: \.self) { i in
                         Circle()
-                            .fill(i < state.burstCount ? P.teamA : Color(hex: 0x334155))
+                            .fill(
+                                i >= state.burstCount ? Color(hex: 0x334155)
+                                    : (state.burstCount >= 3 ? P.teamB : P.teamA)
+                            )
                             .frame(width: 18, height: 18)
                     }
                 }

@@ -44,7 +44,6 @@ struct Match: Codable, Equatable {
     var tb: [Int] = [0, 0]
     var tbTarget: Int = 7
     var tbStartIdx: Int = 0
-    var swapped: Bool = false
     /// Milisegundos desde 1970, como en la versión Android.
     var startedAt: Double = 0
     var elapsed: Double = 0
@@ -52,10 +51,6 @@ struct Match: Codable, Equatable {
     var winner: Int = -1
 
     init() {}
-
-    init(swapped: Bool) {
-        self.swapped = swapped
-    }
 
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -72,7 +67,6 @@ struct Match: Codable, Equatable {
         tiebreak = (try? c.decode(Bool.self, forKey: .tiebreak)) ?? false
         tbTarget = (try? c.decode(Int.self, forKey: .tbTarget)) ?? 7
         tbStartIdx = (try? c.decode(Int.self, forKey: .tbStartIdx)) ?? 0
-        swapped = (try? c.decode(Bool.self, forKey: .swapped)) ?? false
         startedAt = (try? c.decode(Double.self, forKey: .startedAt)) ?? 0
         elapsed = (try? c.decode(Double.self, forKey: .elapsed)) ?? 0
         finished = (try? c.decode(Bool.self, forKey: .finished)) ?? false
@@ -91,10 +85,12 @@ struct Events: Equatable {
 
 struct Cfg: Codable, Equatable {
     var names: [String] = ["Nosotros", "Ellos"]
-    var players: [[String]] = [
-        ["Jugador 1", "Jugador 2"],
-        ["Jugador 3", "Jugador 4"]
-    ]
+    /// Por pareja: [jugador de la izquierda, jugador de la derecha].
+    var players: [[String]] = Cfg.defaultPlayers
+
+    static let defaultPlayers = [["Izquierda A", "Derecha A"], ["Izquierda B", "Derecha B"]]
+    /// Nombres por defecto de versiones anteriores, que se cambian al cargar.
+    static let oldDefaultPlayers = [["Jugador 1", "Jugador 2"], ["Jugador 3", "Jugador 4"]]
     var firstServeTeam: Int = 0
     var firstServePlayer: Int = 0
     var bestOf: Int = 3
@@ -113,11 +109,12 @@ struct Cfg: Codable, Equatable {
     var voiceCourtSide: Bool = true
     var voiceSwitch: Bool = true
     var voiceRate: Double = 1.05
+    /// Modo guasa: tras el tanteo, a veces se mete con quien pierde o alaba a quien gana.
+    var guasa: Bool = false
 
-    // pantalla
+    // pantalla (la pareja A siempre a la izquierda y la B a la derecha)
     var vibrate: Bool = true
     var keepAwake: Bool = true
-    var autoSwap: Bool = false
     var sideAlert: Bool = true
 
     init() {}
@@ -132,7 +129,12 @@ struct Cfg: Codable, Equatable {
 
         if let n = try? c.decode([String].self, forKey: .names), n.count == 2 { names = n }
         if let p = try? c.decode([[String]].self, forKey: .players),
-           p.count == 2, p[0].count == 2, p[1].count == 2 { players = p }
+           p.count == 2, p[0].count == 2, p[1].count == 2 {
+            // los nombres por defecto de antes (Jugador 1…4) pasan a izquierda/derecha
+            players = (0..<2).map { t in
+                (0..<2).map { i in p[t][i] == Cfg.oldDefaultPlayers[t][i] ? Cfg.defaultPlayers[t][i] : p[t][i] }
+            }
+        }
 
         firstServeTeam = i(.firstServeTeam, 0)
         firstServePlayer = i(.firstServePlayer, 0)
@@ -148,9 +150,9 @@ struct Cfg: Codable, Equatable {
         voiceCourtSide = b(.voiceCourtSide, true)
         voiceSwitch = b(.voiceSwitch, true)
         voiceRate = f(.voiceRate, 1.05)
+        guasa = b(.guasa, false)
         vibrate = b(.vibrate, true)
         keepAwake = b(.keepAwake, true)
-        autoSwap = b(.autoSwap, false)
         sideAlert = b(.sideAlert, true)
     }
 }

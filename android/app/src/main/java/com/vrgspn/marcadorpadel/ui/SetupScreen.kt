@@ -50,26 +50,26 @@ fun SetupScreen(state: AppState) {
             }
             Spacer(Modifier.height(10.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                Field("Jugador 1 (A)", cfg.players[0][0], { v ->
+                Field("A · izquierda", cfg.players[0][0], { v ->
                     state.updateCfg { it.copy(players = listOf(listOf(v, it.players[0][1]), it.players[1])) }
                 }, Modifier.weight(1f))
-                Field("Jugador 2 (A)", cfg.players[0][1], { v ->
+                Field("A · derecha", cfg.players[0][1], { v ->
                     state.updateCfg { it.copy(players = listOf(listOf(it.players[0][0], v), it.players[1])) }
                 }, Modifier.weight(1f))
             }
             Spacer(Modifier.height(10.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                Field("Jugador 3 (B)", cfg.players[1][0], { v ->
+                Field("B · izquierda", cfg.players[1][0], { v ->
                     state.updateCfg { it.copy(players = listOf(it.players[0], listOf(v, it.players[1][1]))) }
                 }, Modifier.weight(1f))
-                Field("Jugador 4 (B)", cfg.players[1][1], { v ->
+                Field("B · derecha", cfg.players[1][1], { v ->
                     state.updateCfg { it.copy(players = listOf(it.players[0], listOf(it.players[1][0], v))) }
                 }, Modifier.weight(1f))
             }
         }
 
         Card("Saque inicial") {
-            Help("El saque va rotando: A1 → B1 → A2 → B2 y vuelta a empezar.")
+            Help("Empieza sacando quien elijas. Después saca el de la derecha de la otra pareja, luego el compañero del primero y por último el de la izquierda de la otra pareja.")
             Spacer(Modifier.height(10.dp))
             val opciones = listOf(
                 cfg.players[0][0] to (0 to 0),
@@ -115,6 +115,10 @@ fun SetupScreen(state: AppState) {
                 "El último set se juega a 10 puntos en lugar de a juegos.",
                 cfg.superTb
             ) { v -> state.updateCfg { it.copy(superTb = v) } }
+        }
+
+        Card("Ambiente") {
+            GuasaSwitch(state)
         }
 
         BigButton("Empezar partido", primary = true) { state.startMatch() }

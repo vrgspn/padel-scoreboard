@@ -47,8 +47,6 @@ import kotlin.math.min
 /** Pantalla del marcador: dos cuadros, uno por pareja. */
 @Composable
 fun MatchScreen(state: AppState) {
-    val match = state.match
-
     Column(Modifier.fillMaxSize().background(P.bg)) {
         Header(state)
 
@@ -65,8 +63,9 @@ fun MatchScreen(state: AppState) {
             val playerDp: Dp = if (portrait) (w.value * 0.055f).coerceIn(17f, 34f).dp
             else (h.value * 0.075f).coerceIn(16f, 34f).dp
 
-            // el primer panel es el de la izquierda (o el de arriba en vertical)
-            val order = if (match.swapped) listOf(1, 0) else listOf(0, 1)
+            // la pareja A siempre a la izquierda (o arriba en vertical) y la B a la derecha:
+            // aunque cambien de lado en la pista, el marcador no se mueve
+            val order = listOf(0, 1)
 
             if (portrait) {
                 Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -161,18 +160,23 @@ private fun TeamPanel(
             }
             .clickable { state.addPoint(team) }
     ) {
+        // Cada pareja guarda [izquierda, derecha]. La pareja A (a la izquierda) pinta
+        // al de la izquierda arriba y al de la derecha abajo; la B (a la derecha), al
+        // revés: el de la derecha arriba y el de la izquierda abajo.
+        val topIdx = if (team == 0) 0 else 1
+        val botIdx = 1 - topIdx
         val playerTop = @Composable {
             PlayerRow(
-                name = cfg.players[team][0],
-                serving = isServingTeam && serving.second == 0,
+                name = cfg.players[team][topIdx],
+                serving = isServingTeam && serving.second == topIdx,
                 sizeDp = playerDp,
                 alignEnd = rightSide
             )
         }
         val playerBottom = @Composable {
             PlayerRow(
-                name = cfg.players[team][1],
-                serving = isServingTeam && serving.second == 1,
+                name = cfg.players[team][botIdx],
+                serving = isServingTeam && serving.second == botIdx,
                 sizeDp = playerDp,
                 alignEnd = rightSide
             )

@@ -38,17 +38,22 @@ final class Speech {
     }
 
     /// Une los trozos con coma; `asSentences` los separa con punto.
-    func say(_ parts: [String], rate: Double, asSentences: Bool = false) {
+    /// `extra` es una frase entera (la del modo guasa) que se dice al final tal cual.
+    func say(_ parts: [String], rate: Double, asSentences: Bool = false, extra: String = "") {
         let pieces = parts
             .map { cleaned($0) }
             .filter { !$0.isEmpty }
         guard !pieces.isEmpty else { return }
 
-        let text: String
+        var text: String
         if asSentences {
             text = pieces.map { capitalizedFirst($0) }.joined(separator: ". ") + "."
         } else {
             text = capitalizedFirst(pieces.joined(separator: ", ")) + "."
+        }
+        let coletilla = extra.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let last = coletilla.last {
+            text += " " + capitalizedFirst(coletilla) + (".?!".contains(last) ? "" : ".")
         }
 
         let utterance = AVSpeechUtterance(string: text)

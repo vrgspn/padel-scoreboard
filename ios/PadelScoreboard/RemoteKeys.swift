@@ -20,8 +20,15 @@ final class RemoteKeys {
 
     static let shared = RemoteKeys()
 
+    /// Qué ha pasado con el botón del mando.
+    enum Phase {
+        case down   // se ha apretado (teclado: luego llegará la suelta)
+        case up     // se ha soltado
+        case tap    // pulsación sin suelta conocida (saltos de volumen)
+    }
+
     /// Se avisa con la misma etiqueta que usa la versión Android.
-    var onSignal: ((String) -> Void)?
+    var onSignal: ((String, Phase) -> Void)?
     var volumeKeysEnabled = true
 
     private var volumeObservation: NSKeyValueObservation?
@@ -52,8 +59,8 @@ final class RemoteKeys {
 
     private func attach(_ keyboard: GCKeyboard) {
         keyboard.keyboardInput?.keyChangedHandler = { [weak self] _, _, keyCode, pressed in
-            guard pressed, let label = RemoteKeys.label(for: keyCode) else { return }
-            DispatchQueue.main.async { self?.onSignal?(label) }
+            guard let label = RemoteKeys.label(for: keyCode) else { return }
+            DispatchQueue.main.async { self?.onSignal?(label, pressed ? .down : .up) }
         }
     }
 
@@ -94,7 +101,8 @@ final class RemoteKeys {
 
         let delta = value - previous
         guard abs(delta) > 0.001 else { return }
-        onSignal?(delta > 0 ? "Volumen +" : "Volumen −")
+        // Mantener el botón da una ráfaga continua de saltos: AppState la reconoce.
+        onSignal?(delta > 0 ? "Volumen +" : "Volumen −", .tap)
 
         // En los topes dejaría de haber saltos: se vuelve al centro.
         if value <= 0.02 || value >= 0.98 { setSystemVolume(0.5) }

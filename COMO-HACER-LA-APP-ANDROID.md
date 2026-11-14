@@ -119,8 +119,10 @@ Esta es la ventaja de la app frente a la web: **las teclas de volumen sí llegan
    volumen del móvil ya no cambia: el marcador se lleva la pulsación.
 
 - **Pulsador con un solo botón** → activa en ⚙ **Modo un solo botón**:
-  1 pulsación = punto para quien saca · 2 = punto para quien resta · 3 = deshacer,
-  con la espera que elijas (5 segundos de serie).
+  2 pulsaciones = punto para la pareja de la izquierda · 3 = punto para la de la
+  derecha · mantener 3 segundos = deshacer. Una sola pulsación no cuenta (así no
+  saltan puntos en el bolsillo). Las pulsaciones tienen que ir seguidas, dentro de
+  la espera que elijas (5 segundos de serie).
 - **Mando con dos botones** (volumen + y −) → sin el modo un botón, bajar volumen
   suma a la pareja de la izquierda y subirlo a la de la derecha.
 

@@ -167,7 +167,10 @@ fun BurstOverlay(state: AppState) {
             repeat(3) { i ->
                 Box(
                     Modifier.size(18.dp).clip(RoundedCornerShape(50))
-                        .background(if (i < state.burstCount) P.teamA else Color(0xFF334155))
+                        .background(
+                            if (i >= state.burstCount) Color(0xFF334155)
+                            else if (state.burstCount >= 3) P.teamB else P.teamA
+                        )
                 )
             }
         }

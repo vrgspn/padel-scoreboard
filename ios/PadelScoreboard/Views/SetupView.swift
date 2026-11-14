@@ -28,25 +28,25 @@ struct SetupView: View {
                         }
                     }
                     HStack(spacing: 10) {
-                        FieldBox(label: "Jugador 1 (A)", text: cfg.players[0][0]) { v in
+                        FieldBox(label: "A · izquierda", text: cfg.players[0][0]) { v in
                             state.updateCfg { var c = $0; c.players[0][0] = v; return c }
                         }
-                        FieldBox(label: "Jugador 2 (A)", text: cfg.players[0][1]) { v in
+                        FieldBox(label: "A · derecha", text: cfg.players[0][1]) { v in
                             state.updateCfg { var c = $0; c.players[0][1] = v; return c }
                         }
                     }
                     HStack(spacing: 10) {
-                        FieldBox(label: "Jugador 3 (B)", text: cfg.players[1][0]) { v in
+                        FieldBox(label: "B · izquierda", text: cfg.players[1][0]) { v in
                             state.updateCfg { var c = $0; c.players[1][0] = v; return c }
                         }
-                        FieldBox(label: "Jugador 4 (B)", text: cfg.players[1][1]) { v in
+                        FieldBox(label: "B · derecha", text: cfg.players[1][1]) { v in
                             state.updateCfg { var c = $0; c.players[1][1] = v; return c }
                         }
                     }
                 }
 
                 CardBox(title: "Saque inicial") {
-                    Help("El saque va rotando: A1 → B1 → A2 → B2 y vuelta a empezar.")
+                    Help("Empieza sacando quien elijas. Después saca el de la derecha de la otra pareja, luego el compañero del primero y por último el de la izquierda de la otra pareja.")
                     VStack(spacing: 6) {
                         HStack(spacing: 6) {
                             serveButton(cfg.players[0][0], team: 0, player: 0)
@@ -81,6 +81,10 @@ struct SetupView: View {
                         subtitle: "El último set se juega a 10 puntos en lugar de a juegos.",
                         isOn: cfg.superTb
                     ) { v in state.updateCfg { var c = $0; c.superTb = v; return c } }
+                }
+
+                CardBox(title: "Ambiente") {
+                    GuasaSwitch()
                 }
 
                 VStack(spacing: 0) {

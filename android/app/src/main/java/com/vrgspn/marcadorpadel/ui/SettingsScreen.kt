@@ -1,9 +1,7 @@
 package com.vrgspn.marcadorpadel.ui
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -19,6 +17,17 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.vrgspn.marcadorpadel.AppState
 import com.vrgspn.marcadorpadel.Screen
+
+/** Modo guasa. Está en el alta del partido y en Ajustes; activarlo enciende también la voz. */
+@Composable
+fun GuasaSwitch(state: AppState) {
+    SwitchRow(
+        "Modo guasa 😈",
+        "Tras el tanteo, de vez en cuando (uno de cada cuatro puntos, al azar) se mete con quien pierde el punto " +
+            "o pone por las nubes a quien lo gana. Al acabar cada juego, set y partido, siempre. Activa la voz.",
+        state.cfg.guasa
+    ) { v -> state.updateCfg { it.copy(guasa = v, voice = it.voice || v) } }
+}
 
 @Composable
 fun SettingsScreen(state: AppState) {
@@ -56,6 +65,7 @@ fun SettingsScreen(state: AppState) {
                 "Dice «cambio de lado» cuando toca cambiar de pista.",
                 cfg.voiceSwitch
             ) { v -> state.updateCfg { it.copy(voiceSwitch = v) } }
+            GuasaSwitch(state)
             SwitchRow(
                 "Vibrar al apuntar",
                 "Confirmación táctil al sumar cada punto.",
@@ -82,7 +92,7 @@ fun SettingsScreen(state: AppState) {
             ) { v -> state.updateCfg { it.copy(volumeKeys = v) } }
             SwitchRow(
                 "Modo un solo botón",
-                "Para pulsadores con un único botón: 1 pulsación = punto para quien saca · 2 pulsaciones = punto para quien resta · 3 pulsaciones = deshacer.",
+                "Para pulsadores con un único botón: 2 pulsaciones = punto para la pareja de la izquierda · 3 pulsaciones = punto para la de la derecha · mantener 3 segundos = deshacer. Una sola pulsación no cuenta, para que no salten puntos en el bolsillo.",
                 cfg.oneButton
             ) { v -> state.updateCfg { it.copy(oneButton = v) } }
 
@@ -96,8 +106,8 @@ fun SettingsScreen(state: AppState) {
             )
             Spacer(Modifier.height(8.dp))
             Help(
-                "Tiempo que se espera otra pulsación antes de apuntar. Súbelo si tu pulsador tarda en responder; " +
-                    "bájalo si quieres que el punto entre al instante. Con tres pulsaciones no se espera."
+                "Las pulsaciones tienen que ir seguidas, sin dejar pasar este tiempo entre una y otra; " +
+                    "pasado este tiempo sin otra pulsación, se apunta el punto. Bájalo si quieres que el punto entre antes."
             )
             if (state.lastSignal.isNotEmpty()) {
                 Spacer(Modifier.height(10.dp))
@@ -121,19 +131,10 @@ fun SettingsScreen(state: AppState) {
                 cfg.keepAwake
             ) { v -> state.updateCfg { it.copy(keepAwake = v) } }
             SwitchRow(
-                "Intercambiar lados automáticamente",
-                "Al cambiar de lado en la pista, las parejas también cambian en el marcador.",
-                cfg.autoSwap
-            ) { v -> state.updateCfg { it.copy(autoSwap = v) } }
-            SwitchRow(
                 "Avisar del cambio de lado",
-                "Muestra un cartel cuando toca cambiar.",
+                "Muestra un cartel cuando toca cambiar. El marcador no se mueve: la pareja A siempre a la izquierda y la B a la derecha.",
                 cfg.sideAlert
             ) { v -> state.updateCfg { it.copy(sideAlert = v) } }
-            Spacer(Modifier.height(12.dp))
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                SmallButton("⇄  Intercambiar lados", Modifier.weight(1f)) { state.swapSides() }
-            }
         }
 
         BigButton("Volver al partido", primary = true) { state.screen = Screen.MATCH }

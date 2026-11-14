@@ -37,17 +37,25 @@ class Speech(context: Context) {
         tts = null
     }
 
-    /** Une los trozos con coma; [asSentences] los separa con punto. */
-    fun say(parts: List<String>, rate: Float, asSentences: Boolean = false) {
+    /**
+     * Une los trozos con coma; [asSentences] los separa con punto.
+     * [extra] es una frase entera (la del modo guasa) que se dice al final tal cual.
+     */
+    fun say(parts: List<String>, rate: Float, asSentences: Boolean = false, extra: String = "") {
         if (!ready) return
         val clean = parts.map { it.replace(Regex("[.,;:]+"), " ").replace(Regex("\\s+"), " ").trim() }
             .filter { it.isNotEmpty() }
         if (clean.isEmpty()) return
 
-        val text = if (asSentences)
+        var text = if (asSentences)
             clean.joinToString(". ") { it.replaceFirstChar { c -> c.uppercase() } } + "."
         else
             (clean.joinToString(", ")).replaceFirstChar { it.uppercase() } + "."
+        val coletilla = extra.trim()
+        if (coletilla.isNotEmpty()) {
+            text += " " + coletilla.replaceFirstChar { it.uppercase() } +
+                if (coletilla.last() in ".?!") "" else "."
+        }
 
         tts?.setSpeechRate(rate)
         tts?.speak(text, TextToSpeech.QUEUE_FLUSH, null, "padel")

@@ -51,20 +51,21 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
-        if (event != null && event.repeatCount > 0) return true
+        if (event != null && event.repeatCount > 0) return true   // mantenido: el tiempo lo cuenta AppState
         val label = labelFor(keyCode) ?: return super.onKeyDown(keyCode, event)
         if (!state.cfg.volumeKeys && (keyCode == KeyEvent.KEYCODE_VOLUME_UP || keyCode == KeyEvent.KEYCODE_VOLUME_DOWN)) {
             return super.onKeyDown(keyCode, event)
         }
-        state.remoteSignal(label)
+        state.remoteDown(label)
         return true   // consumida: el volumen del móvil no cambia
     }
 
     override fun onKeyUp(keyCode: Int, event: KeyEvent?): Boolean {
-        val isRemote = labelFor(keyCode) != null
+        val label = labelFor(keyCode) ?: return super.onKeyUp(keyCode, event)
         val volume = keyCode == KeyEvent.KEYCODE_VOLUME_UP || keyCode == KeyEvent.KEYCODE_VOLUME_DOWN
         if (volume && !state.cfg.volumeKeys) return super.onKeyUp(keyCode, event)
-        return if (isRemote) true else super.onKeyUp(keyCode, event)
+        state.remoteUp(label)
+        return true
     }
 
     /** Teclas que puede mandar un pulsador de foto o un mando Bluetooth. */

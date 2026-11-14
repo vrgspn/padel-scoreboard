@@ -159,8 +159,10 @@ Para comprobar qué está llegando: ⚙ → *Mando de disparo* → abajo verás 
 **última señal recibida**. Pulsa el mando y mira qué pone.
 
 - **Pulsador de un solo botón** → activa **Modo un solo botón**:
-  1 pulsación = punto para quien saca · 2 = punto para quien resta · 3 = deshacer,
-  con la espera que elijas (5 segundos de serie).
+  2 pulsaciones = punto para la pareja de la izquierda · 3 = punto para la de la
+  derecha · mantener 3 segundos = deshacer. Una sola pulsación no cuenta (así no
+  saltan puntos en el bolsillo). Las pulsaciones tienen que ir seguidas, dentro de
+  la espera que elijas (5 segundos de serie).
 - **Mando de dos botones** → sin el modo un botón, una tecla suma a la pareja de la
   izquierda y la otra a la de la derecha.
 - **Sin mando** → un toque en cada mitad de la pantalla suma punto. Funciona siempre.

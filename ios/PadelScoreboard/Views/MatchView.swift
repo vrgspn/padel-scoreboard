@@ -25,8 +25,9 @@ struct MatchView: View {
                     ? min(max(w * 0.055, 17), 34)
                     : min(max(h * 0.075, 16), 34)
 
-                // el primer panel es el de la izquierda (o el de arriba en vertical)
-                let order = state.match.swapped ? [1, 0] : [0, 1]
+                // la pareja A siempre a la izquierda (o arriba en vertical) y la B a la derecha:
+                // aunque cambien de lado en la pista, el marcador no se mueve
+                let order = [0, 1]
 
                 if portrait {
                     VStack(spacing: 10) {
@@ -137,9 +138,9 @@ private struct TeamPanel: View {
             GeometryReader { geo in
                 HStack(spacing: 0) {
                     VStack(alignment: .leading, spacing: 0) {
-                        playerRow(0)
+                        playerRow(topPlayer)
                         Spacer(minLength: 0)
-                        playerRow(1)
+                        playerRow(1 - topPlayer)
                         Spacer(minLength: 0)
                         GamesRow(team: team)
                     }
@@ -154,9 +155,9 @@ private struct TeamPanel: View {
             }
         } else {
             VStack(spacing: 0) {
-                playerRow(0)
+                playerRow(topPlayer)
                 scoreBlock.frame(maxHeight: .infinity)
-                playerRow(1)
+                playerRow(1 - topPlayer)
                 Spacer().frame(height: 4)
                 GamesRow(team: team)
             }
@@ -183,6 +184,10 @@ private struct TeamPanel: View {
         }
         .frame(maxWidth: .infinity)
     }
+
+    /// Cada pareja guarda [izquierda, derecha]. La pareja A (a la izquierda) pinta
+    /// al de la izquierda arriba; la B (a la derecha), al de la derecha arriba.
+    private var topPlayer: Int { team == 0 ? 0 : 1 }
 
     private func playerRow(_ index: Int) -> some View {
         let isServer = isServingTeam && serving.player == index

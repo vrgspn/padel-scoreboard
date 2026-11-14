@@ -80,8 +80,6 @@ main{
   flex:1;display:grid;grid-template-columns:1fr 1fr;gap:var(--gap);
   padding:0 12px calc(10px + env(safe-area-inset-bottom));min-height:0;
 }
-main.swapped .team[data-t="0"]{order:2}
-main.swapped .team[data-t="1"]{order:1}
 
 .team{
   position:relative;display:flex;flex-direction:column;min-height:0;
@@ -218,6 +216,8 @@ main.swapped .team[data-t="1"]{order:1}
 #pressHint .txt{font-size:14px;color:var(--txt);text-align:center;font-weight:600}
 #pressHint .bar{width:190px;max-width:70vw;height:5px;border-radius:99px;background:#24324d;overflow:hidden}
 #pressHint .bar i{display:block;height:100%;width:100%;background:var(--a);transform-origin:left}
+#pressHint.b .dot.on{background:var(--b);box-shadow:0 0 14px color-mix(in srgb,var(--b) 60%,transparent)}
+#pressHint.b .bar i{background:var(--b)}
 @keyframes burst{from{transform:scaleX(1)}to{transform:scaleX(0)}}
 
 /* ---------- Modales ---------- */
@@ -383,7 +383,6 @@ label.fl.narrow{max-width:190px}
     <div id="hdrBtns">
       <div id="clock">0:00</div>
       <button class="ibtn" id="btnVoice" title="Cantar el marcador en voz alta">🔇</button>
-      <button class="ibtn opt" id="btnSwap" title="Intercambiar lados en pantalla">⇄</button>
       <button class="ibtn opt" id="btnFull" title="Pantalla completa">⛶</button>
       <button class="ibtn" id="btnCfg" title="Ajustes y mando">⚙</button>
     </div>
@@ -429,13 +428,13 @@ label.fl.narrow{max-width:190px}
         <label class="fl">Pareja B<input type="text" id="nameB" maxlength="18" placeholder="Pareja B"></label>
       </div>
       <div class="row">
-        <label class="fl">Jugadores A
-          <div class="pcount"><input type="text" id="a1" maxlength="14" placeholder="Jugador 1"><input type="text" id="a2" maxlength="14" placeholder="Jugador 2"></div>
+        <label class="fl">Pareja A · izquierda y derecha
+          <div class="pcount"><input type="text" id="a1" maxlength="14" placeholder="Izquierda A"><input type="text" id="a2" maxlength="14" placeholder="Derecha A"></div>
         </label>
       </div>
       <div class="row">
-        <label class="fl">Jugadores B
-          <div class="pcount"><input type="text" id="b1" maxlength="14" placeholder="Jugador 3"><input type="text" id="b2" maxlength="14" placeholder="Jugador 4"></div>
+        <label class="fl">Pareja B · izquierda y derecha
+          <div class="pcount"><input type="text" id="b1" maxlength="14" placeholder="Izquierda B"><input type="text" id="b2" maxlength="14" placeholder="Derecha B"></div>
         </label>
       </div>
     </div>
@@ -443,7 +442,7 @@ label.fl.narrow{max-width:190px}
     <div class="card">
       <h2>Saque inicial</h2>
       <div class="row"><label class="fl">Saca primero<select id="firstServer"></select></label></div>
-      <small class="help">El saque va rotando: A1 → B1 → A2 → B2 y vuelta a empezar.</small>
+      <small class="help">Empieza sacando quien elijas. Después saca el de la derecha de la otra pareja, luego el compañero del primero y por último el de la izquierda de la otra pareja.</small>
     </div>
 
     <div class="card">
@@ -458,6 +457,11 @@ label.fl.narrow{max-width:190px}
       <div class="toggle"><div>Punto de oro<small>Con 40-40 el siguiente punto decide el juego. Sin punto de oro se juega con ventajas.</small></div><div class="sw" data-cfg="golden"></div></div>
       <div class="toggle"><div>Tie-break a 6-6<small>Desactivado, el set se gana por diferencia de 2 juegos.</small></div><div class="sw" data-cfg="tiebreak"></div></div>
       <div class="toggle"><div>Super tie-break en el set decisivo<small>El último set se juega a 10 puntos en lugar de a juegos.</small></div><div class="sw" data-cfg="superTb"></div></div>
+    </div>
+
+    <div class="card">
+      <h2>Ambiente</h2>
+      <div class="toggle"><div>Modo guasa 😈<small>Tras el tanteo, de vez en cuando (uno de cada cuatro puntos, al azar) se mete con quien pierde el punto o pone por las nubes a quien lo gana. Al acabar cada juego, set y partido, siempre. Activa la voz.</small></div><div class="sw" data-cfg="guasa"></div></div>
     </div>
 
     <button class="bigbtn" id="btnStart">Empezar partido</button>
@@ -478,6 +482,7 @@ label.fl.narrow{max-width:190px}
       <div class="toggle"><div>Decir quién saca<small>Añade «saca Ismael» después del tanteo.</small></div><div class="sw" data-cfg="voiceServer"></div></div>
       <div class="toggle"><div>Decir desde qué lado saca<small>Añade «desde la derecha» o «desde la izquierda», según toque cuadro de derecha o de revés.</small></div><div class="sw" data-cfg="voiceCourtSide"></div></div>
       <div class="toggle"><div>Avisar del cambio de lado<small>Dice «cambio de lado» cuando toca cambiar de pista.</small></div><div class="sw" data-cfg="voiceSwitch"></div></div>
+      <div class="toggle"><div>Modo guasa 😈<small>Tras el tanteo, de vez en cuando (uno de cada cuatro puntos, al azar) se mete con quien pierde el punto o pone por las nubes a quien lo gana. Al acabar cada juego, set y partido, siempre. Activa la voz.</small></div><div class="sw" data-cfg="guasa"></div></div>
       <div class="toggle"><div>Vibrar al apuntar<small>Confirmación táctil en el móvil al sumar cada punto.</small></div><div class="sw" data-cfg="vibrate"></div></div>
       <div class="row" style="margin-top:12px">
         <label class="fl">Voz del dispositivo<select id="voiceSel"></select></label>
@@ -492,13 +497,13 @@ label.fl.narrow{max-width:190px}
 
     <div class="card">
       <h2>Mando de disparo (pulsadores)</h2>
-      <div class="toggle"><div>Modo un solo botón<small>Para mandos con un único pulsador: 1 pulsación = punto para quien saca · 2 pulsaciones = punto para quien resta · 3 pulsaciones = deshacer.</small></div><div class="sw" data-cfg="oneButton"></div></div>
+      <div class="toggle"><div>Modo un solo botón<small>Para mandos con un único pulsador: 2 pulsaciones = punto para la pareja de la izquierda · 3 pulsaciones = punto para la de la derecha · mantener 3 segundos = deshacer. Una sola pulsación no cuenta, para que no salten puntos en el bolsillo.</small></div><div class="sw" data-cfg="oneButton"></div></div>
       <div class="row" style="margin-top:12px">
         <label class="fl">Espera entre pulsaciones
           <div class="seg" id="segBurst">
             <button data-v="1500">1,5 s</button><button data-v="3000">3 s</button><button data-v="5000">5 s</button><button data-v="8000">8 s</button>
           </div>
-          <small class="help">Tiempo que se espera otra pulsación antes de apuntar. Súbelo si tu pulsador tarda en responder; bájalo si quieres que el punto entre al instante. Con tres pulsaciones no se espera.</small>
+          <small class="help">Las pulsaciones tienen que ir seguidas, sin dejar pasar este tiempo entre una y otra; pasado este tiempo sin otra pulsación, se apunta el punto. Bájalo si quieres que el punto entre antes.</small>
         </label>
       </div>
       <div id="binds"></div>
@@ -535,10 +540,8 @@ label.fl.narrow{max-width:190px}
     <div class="card">
       <h2>Pantalla</h2>
       <div class="toggle"><div>Mantener pantalla encendida<small>Evita que se apague durante el partido.</small></div><div class="sw" data-cfg="wake"></div></div>
-      <div class="toggle"><div>Intercambiar lados automáticamente<small>Al cambiar de lado en la pista, las parejas también cambian en el marcador.</small></div><div class="sw" data-cfg="autoSwap"></div></div>
-      <div class="toggle"><div>Avisar del cambio de lado<small>Muestra un cartel cuando toca cambiar.</small></div><div class="sw" data-cfg="sideAlert"></div></div>
+      <div class="toggle"><div>Avisar del cambio de lado<small>Muestra un cartel cuando toca cambiar. El marcador no se mueve: la pareja A siempre a la izquierda y la B a la derecha.</small></div><div class="sw" data-cfg="sideAlert"></div></div>
       <div class="row" style="margin-top:12px">
-        <button class="fbtn" id="btnSwap2">⇄ Intercambiar lados</button>
         <button class="fbtn" id="btnFull2">⛶ Pantalla completa</button>
       </div>
     </div>
@@ -570,9 +573,13 @@ label.fl.narrow{max-width:190px}
 const LS = "padel-scoreboard-v1";
 const PT = ["0","15","30","40","AD"];
 
+// Cada pareja tiene un jugador de la izquierda (índice 0) y otro de la derecha (índice 1)
+const DEF_PLAYERS = [["Izquierda A","Derecha A"],["Izquierda B","Derecha B"]];
+const OLD_DEF_PLAYERS = [["Jugador 1","Jugador 2"],["Jugador 3","Jugador 4"]];
+
 const defCfg = () => ({
   names:["Nosotros","Ellos"],
-  players:[["Jugador 1","Jugador 2"],["Jugador 3","Jugador 4"]],
+  players:DEF_PLAYERS.map(p=>p.slice()),   // por pareja: [izquierda, derecha]
   firstServe:[0,0],          // [equipo, jugador]
   bestOf:3,
   golden:true,
@@ -586,9 +593,9 @@ const defCfg = () => ({
   voiceSwitch:true,      // avisar del cambio de lado
   voiceName:"",
   voiceRate:1.05,
+  guasa:false,           // modo guasa: caña al que pierde, flores al que gana
   vibrate:true,
   wake:true,
-  autoSwap:false,
   sideAlert:true,
   binds:defBinds(),
 });
@@ -618,7 +625,6 @@ const newState = () => ({
   tb:[0,0],
   tbTarget:7,
   tbStartIdx:0,
-  swapped:false,
   started:null,
   elapsed:0,
   finished:false,
@@ -642,6 +648,10 @@ function load(){
     cfg = Object.assign(defCfg(), d.cfg);
     cfg.binds = Object.assign(defBinds(), d.cfg.binds||{});
     st = Object.assign(newState(), d.st);
+    delete st.swapped;        // las parejas ya no cambian de lado en pantalla
+    delete cfg.autoSwap;
+    // los nombres por defecto de antes (Jugador 1…4) pasan a izquierda/derecha
+    cfg.players = cfg.players.map((pp,t)=>pp.map((n,i)=> n === OLD_DEF_PLAYERS[t][i] ? DEF_PLAYERS[t][i] : n));
     past = Array.isArray(d.past) ? d.past : [];
     return true;
   }catch(e){ return false; }
@@ -656,8 +666,9 @@ const setsNeeded = () => Math.ceil(cfg.bestOf/2);
 function serveOrder(){
   const [t,p] = cfg.firstServe;
   const o = 1-t;
-  // A1 -> B1 -> A2 -> B2 (empezando por el jugador elegido de cada pareja)
-  return [[t,p],[o,p],[t,1-p],[o,1-p]];
+  // Empieza el elegido; luego el de la derecha (1) de la otra pareja,
+  // el compañero del primero y, por último, el de la izquierda (0) de la otra.
+  return [[t,p],[o,1],[t,1-p],[o,0]];
 }
 function serverOf(s){
   const ord = serveOrder();
@@ -769,7 +780,6 @@ function addPoint(t, src){
   else if(ev.game)    toast("Juego para " + cfg.names[t] + " · " + st.games[0] + "-" + st.games[1]);
 
   if(ev.side){
-    if(cfg.autoSwap) st.swapped = !st.swapped;
     if(cfg.sideAlert && !ev.match) setTimeout(()=>banner("Cambio de lado","", 2600), ev.game||ev.set?1400:0);
     render();
   }
@@ -794,8 +804,7 @@ function redo(){
 
 function resetScore(){
   past = []; future = [];
-  const sw = st.swapped;
-  st = newState(); st.swapped = sw;
+  st = newState();
   render(); save();
   closeModal("settings"); closeModal("winOverlay");
   toast("Marcador a cero");
@@ -823,17 +832,19 @@ function pointLabel(t){
 
 function render(){
   const srv = serverOf(st);
-  $("#court").classList.toggle("swapped", !!st.swapped);
 
   for(let t=0;t<2;t++){
     const el = teamEls[t];
     el.querySelector(".tname").textContent = cfg.names[t];
     el.classList.toggle("serving", srv[0]===t && !st.finished);
-    // la pareja que ocupa el lado derecho alinea sus nombres a la derecha
-    el.classList.toggle("right", (t === 1) !== !!st.swapped);
+    // la pareja A siempre a la izquierda y la B a la derecha, que alinea sus nombres a la derecha
+    el.classList.toggle("right", t === 1);
 
-    // jugadores: uno arriba y otro abajo, con la pelota en quien saca
-    el.querySelectorAll(".player").forEach((pe,i)=>{
+    // jugadores, con la pelota en quien saca. Pareja de la izquierda: el de la
+    // izquierda arriba y el de la derecha abajo. Pareja de la derecha: al revés,
+    // el de la derecha arriba y el de la izquierda abajo.
+    el.querySelectorAll(".player").forEach((pe,row)=>{
+      const i = t === 0 ? row : 1 - row;
       pe.querySelector(".pn").textContent = cfg.players[t][i];
       pe.classList.toggle("on", srv[0]===t && srv[1]===i && !st.finished);
     });
@@ -934,8 +945,9 @@ function pickVoice(){
   }
   return voices.find(v=>/^es/i.test(v.lang)) || null;
 }
-/** Cada bloque se dice del tirón; entre bloques, una coma: «cuarenta treinta, saca Luis desde la izquierda». */
-function say(txt, force, sep){
+/** Cada bloque se dice del tirón; entre bloques, una coma: «cuarenta treinta, saca Luis desde la izquierda».
+    `extra` es una frase entera (la del modo guasa) que se dice al final tal cual. */
+function say(txt, force, sep, extra){
   if(!TTS || (!cfg.voice && !force) || !txt) return;
   const limpia = s => String(s).replace(/[.,;:]+/g, " ").replace(/\s+/g, " ").trim();
   const mayus = s => s.charAt(0).toUpperCase() + s.slice(1);
@@ -945,6 +957,8 @@ function say(txt, force, sep){
   let frase = sep === "."
     ? partes.map(mayus).join(". ") + "."
     : mayus(partes.join(", ")) + ".";
+  const coletilla = String(extra || "").trim();
+  if(coletilla) frase += " " + mayus(coletilla) + (/[.?!]$/.test(coletilla) ? "" : ".");
   try{
     speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(frase);
@@ -1007,12 +1021,13 @@ function setScoreWords(s, t){
 
 function announce(t, ev){
   if(!cfg.voice) return;
+  const guasa = guasaFrase(t, ev);
   const p = [];
   const cambio = (ev.side && !ev.match && cfg.voiceSwitch) ? "cambio de lado" : "";
   if(ev.match){
     p.push("juego set y partido para " + cfg.names[st.winner]);
     p.push(st.sets.map(s => setScoreWords(s, st.winner)).join(" "));
-    return say(p, false, ".");
+    return say(p, false, ".", guasa);
   }else if(ev.set){
     const s = st.sets[st.sets.length-1];
     p.push("juego y set para " + cfg.names[t]);
@@ -1021,14 +1036,14 @@ function announce(t, ev){
     if(ev.tbStart) p.push("se decide en super tie break a " + nw(st.tbTarget) + " puntos");
     p.push(cambio);
     p.push(serveLine());
-    return say(p, false, ".");
+    return say(p, false, ".", guasa);
   }else if(ev.game){
     p.push("juego para " + cfg.names[t]);
     p.push(gamesPhrase(t));
     if(ev.tbStart) p.push("tie break");
     p.push(cambio);
     p.push(serveLine());
-    return say(p, false, ".");
+    return say(p, false, ".", guasa);
   }
   // tanteo dentro del juego: una sola frase, separada por comas
   p.push(pointsPhrase());
@@ -1038,8 +1053,191 @@ function announce(t, ev){
     const s = stake(k);
     if(s === "Punto de set" || s === "Punto de partido") p.push(s.toLowerCase() + " para " + cfg.names[k]);
   }
-  say(p);
+  say(p, false, ",", guasa);
 }
+
+/* @guasa-inicio — generado: mismo banco que Android e iPhone (138 frases)
+   Huecos: {G} pareja que gana el punto · {g} uno de sus jugadores
+           {P} pareja que lo pierde      · {p} uno de sus jugadores */
+const GUASA = {
+  PUNTO_PIERDE:[
+    "{p}, esa bola la devolvía mejor mi abuela con el andador",
+    "{p}, la pala se coge por el mango, por si nadie te lo había dicho",
+    "{p}, ¿has venido a jugar o a hacerte fotos para Instagram?",
+    "Tranquilidad, {p}, que la red también necesita cariño",
+    "{p}, eso no ha sido un golpe, ha sido un estornudo",
+    "{p}, la próxima vez apunta, que es gratis",
+    "{p}, el cristal ya ha pedido una orden de alejamiento contra ti",
+    "Ánimo, {p}, que hacer el ridículo también quema calorías",
+    "{p}, menos zapatillas caras y más flexionar las piernas",
+    "{p}, juegas como si la pelota te debiera dinero",
+    "{p}, hoy no es tu día. Ni tu semana. Ni tu año",
+    "{p}, eso en mi pueblo se llama regalar",
+    "{p}, ese golpe merece una multa",
+    "{p}, si quieres te dejo mi pala, que la tuya está claro que no funciona",
+    "{p}, aún estás buscando la pelota, ¿verdad?",
+    "{p}, has mandado la bola tan lejos que va a llegar a Portugal",
+    "{p}, tu revés es como el wifi del club: va cuando quiere",
+    "{p}, la bandeja era para la pelota, no para servir cañas",
+    "{p}, ¿eso era un globo o una consulta al cielo?",
+    "{p}, hasta los de la pista de al lado se están riendo",
+    "{p}, se te ha visto venir desde el aparcamiento",
+    "{p}, ese punto lo cuento en la cena de Navidad",
+    "{p}, piernas de gelatina y manos de mantequilla. Combo completo",
+    "{p}, tu pala acaba de pedir el traslado",
+    "{p}, la pared es tu amiga, pero hoy no te habla",
+    "{p}, ¿necesitas gafas o es que te da igual?",
+    "{p}, más que pádel lo tuyo es danza contemporánea",
+    "{p}, la culpa no es de la pala, te lo aseguro",
+    "{p}, has llegado a esa bola con la puntualidad de un tren de cercanías",
+    "{p}, la red te ha ganado el punto. La red, que ni se mueve",
+    "{P}, ¿os pongo una silla y lo veis desde fuera?",
+    "{P}, os recuerdo que esto se juega con pelota",
+    "{P}, parecéis dos estatuas decorando la pista",
+    "{P}, si regalar puntos diera dinero estaríais jubilados",
+    "{P}, la comunicación en pareja no es lo vuestro, ¿eh?",
+    "{P}, ¿seguís calentando? Porque llevamos un buen rato",
+    "Punto para {G}, y {P} mirando a las musarañas",
+    "{P}, os habéis quedado mirando la pelota como quien mira un eclipse",
+    "{P}: mía, tuya, de nadie. Clásico",
+    "{P}, ¿jugáis juntos o cada uno en su partido?",
+    "{P}, ese punto lo habéis perdido con mucho estilo. Del malo",
+    "{P}, alguien debería llamar a vuestro entrenador. Y despedirlo",
+    "{P}, por el centro de la pista ha pasado un autobús y nadie se ha movido"
+  ],
+  PUNTO_GANA:[
+    "{g}, eso ha sido nivel profesional. Que alguien le firme un contrato",
+    "{g}, con esa derecha deberían ponerte una calle",
+    "{g}, eso no es un golpe, es una obra de arte",
+    "Cuidado, que {g} está en modo bestia",
+    "{g}, juegas tan bien que da hasta rabia",
+    "{g} acaba de humillar a {p} en directo y sin anestesia",
+    "{g}, esa víbora ha dejado a {p} temblando",
+    "{g}, ese remate se ha oído en el pueblo de al lado",
+    "{g}, por cuatro y a la calle. Que vayan a buscarla al bar",
+    "{g}, qué muñeca. Eso no se entrena, eso se nace",
+    "{g}, tienes más clase que un colegio entero",
+    "{g}, buena planta y encima juegas bien. Qué injusto es el mundo",
+    "{g}, esa dejada ha sido una caricia. Con mala intención, pero una caricia",
+    "{g}, si sigues así vamos a tener que cobrar entrada",
+    "{g}, el pádel te debería pagar a ti",
+    "{g}, eso ha sido tan bonito que casi lloro",
+    "Atención, que {g} está jugando con el modo dios activado",
+    "{g}, ese golpe se merece repetición a cámara lenta",
+    "{g}, de mayor quiero jugar como tú",
+    "{g}, has puesto la bola donde has querido. Como siempre",
+    "{g}, eso ha sido un misil teledirigido",
+    "{g}, {p} todavía está buscando por dónde ha pasado eso",
+    "{g}, tu pala debería estar en un museo",
+    "{G}, así se juega. El resto, que tome apuntes",
+    "{G}, estáis on fire. Que alguien traiga un extintor",
+    "{G}, punto de libro. Y de libro de los caros",
+    "{G}, qué química. Ni en las telenovelas",
+    "{G}, os entendéis con la mirada. Qué bonito es el amor",
+    "{G}, esto ya no es un partido, es una exhibición",
+    "{G}, sois una pared. Y además con mala leche",
+    "{G}, con vosotros en la pista hasta el cristal sonríe",
+    "{G}, punto de los que se cuentan a los nietos",
+    "{G}, qué manera de bailar a los de enfrente",
+    "{G}, menudo puntazo. Que suene la música",
+    "Lo de {G} es delito. Que alguien llame a la policía",
+    "{G}, ni en la tele se ven puntos así"
+  ],
+  JUEGO_PIERDE:[
+    "{P}, otro juego que se os escapa. Como vuestra dignidad",
+    "{P}, ese juego lo habéis regalado con lazo y todo",
+    "{P}, tranquilos, que perder también es un arte. Y lo domináis",
+    "{P}, cuando queráis empezáis a jugar, sin prisa",
+    "{P}, las cañas de después las pagáis vosotros. Está decidido",
+    "{P}, a este paso os van a cobrar la pista el doble",
+    "{P}, dicen que entrenáis. Pues no se nota",
+    "¿Alguien ha visto a {P}? Porque en la pista no están",
+    "{P}, juego perdido. Id preparando la excusa del sol",
+    "{P}, os han pasado por encima como una apisonadora",
+    "{P}, a este ritmo acabamos antes de que se caliente la cerveza",
+    "{P}, otro juego más para la colección de desastres",
+    "{P}, más que un juego eso ha sido una donación",
+    "{P}, el marcador no miente. Vosotros sí, cuando decís que sabéis jugar",
+    "{P}, ¿pedimos un tiempo muerto? Porque muertos ya estáis",
+    "{P}, se os ve con muchas ganas. De que acabe",
+    "{p}, invita tú a las cañas, que este juego lo has perdido tú solito",
+    "{p}, ese juego va directo a tu historial delictivo",
+    "{p}, ¿quieres que llamemos a alguien para que te sustituya?",
+    "{p}, el pádel no es lo tuyo. Prueba con la petanca",
+    "{p}, ese juego lo vas a soñar esta noche. En pesadilla",
+    "{p}, tranquilidad, que tu pareja te sigue queriendo. Más o menos",
+    "{p}, a tu pareja se le está poniendo cara de divorcio",
+    "{p}, ¿has pensado en el ajedrez? Ahí se corre menos",
+    "{p}, tu pala está pidiendo a gritos otro dueño"
+  ],
+  JUEGO_GANA:[
+    "{G}, ese juego lo enmarcamos y lo colgamos en el bar del club",
+    "{G}, otro juego al saco. Esto ya es un atraco a mano armada",
+    "{G}, mandáis en la pista. El resto, que mire y aprenda",
+    "{G}, juegazo. Y sin despeinarse",
+    "{G}, qué fácil se juega cuando enfrente no hay nadie",
+    "{G}, juego de campeones. Id preparando el discurso",
+    "{G}, qué paseo militar. Solo faltaba la banda de música",
+    "{G}, esto es como quitarle un caramelo a un niño",
+    "{G}, la pista es vuestra. Los demás pagan alquiler",
+    "{G}, otro juego más. Ya no sabemos ni dónde guardarlos",
+    "{G}, sois la envidia del club. Y con razón",
+    "{G}, ese juego merece una ovación. Venga, todos de pie",
+    "{G}, juego limpio, rápido y con humillación incluida",
+    "{G}, seguid así y os hacen una estatua a la entrada",
+    "{G}, vais sobrados. Sobradísimos",
+    "{G}, ese juego ha sido más redondo que la pelota",
+    "{g}, ese juego ha sido tuyo. {p} sigue buscando la pelota",
+    "{g}, si sigues así te van a pedir autógrafos en el aparcamiento",
+    "{g}, ese juego lo has firmado tú. Y con letra bonita",
+    "{g}, hoy estás que te sales. Y {p} que no entra",
+    "Todos querrían a {g} de pareja. Y nadie enfrente",
+    "{g}, lo tuyo no es talento, es brujería"
+  ],
+  PARTIDO:[
+    "{G}, campeones. Y {P}, a pagar las cañas, como manda la tradición",
+    "{P}, partido para la historia. Para la historia del ridículo",
+    "{G}, os habéis paseado. {P} todavía no sabe ni qué ha pasado",
+    "{p}, vete pensando una excusa, que lo del codo ya no cuela",
+    "{G}, enhorabuena. Lo de enfrente ha sido un entrenamiento",
+    "{P}, mañana más. Y seguramente peor",
+    "{G}, leyendas. Que os pongan una placa en esta pista",
+    "{P}, la revancha cuando queráis. Y la paliza también",
+    "{g}, hoy invitas tú, que para eso has sido el mejor de la pista",
+    "{P}, no estéis tristes. Bueno, un poco sí",
+    "{G}, partido redondo. A presumir al grupo de WhatsApp",
+    "{p}, borra este partido de tu memoria. Nosotros no lo haremos"
+  ]
+};
+const GUASA_PUNTO = 0.25;   // uno de cada cuatro puntos, más o menos, al azar
+const guasaBolsas = {};
+/** Bolsas barajadas: no se repite una frase hasta haber dicho todas las de su lista. */
+function guasaSaca(k){
+  let b = guasaBolsas[k];
+  if(!b || !b.length){
+    b = GUASA[k].slice();
+    for(let i=b.length-1;i>0;i--){ const j = Math.floor(Math.random()*(i+1)); [b[i],b[j]] = [b[j],b[i]]; }
+    guasaBolsas[k] = b;
+  }
+  return b.shift();
+}
+/** Coletilla para el punto que acaba de ganar `t`, o "" si no toca.
+    Siempre al acabar juego, set o partido; en los demás puntos, uno de cada cuatro.
+    La mitad de las veces da caña a quien pierde y la otra mitad alaba a quien gana. */
+function guasaFrase(t, ev){
+  if(!cfg.guasa || (t !== 0 && t !== 1)) return "";
+  const alaba = Math.random() < 0.5;
+  let k;
+  if(ev.match) k = "PARTIDO";
+  else if(ev.game || ev.set) k = alaba ? "JUEGO_GANA" : "JUEGO_PIERDE";
+  else if(Math.random() < GUASA_PUNTO) k = alaba ? "PUNTO_GANA" : "PUNTO_PIERDE";
+  else return "";
+  const o = 1-t, uno = arr => arr[Math.floor(Math.random()*arr.length)];
+  return guasaSaca(k)
+    .replace(/\{G\}/g, cfg.names[t]).replace(/\{P\}/g, cfg.names[o])
+    .replace(/\{g\}/g, uno(cfg.players[t])).replace(/\{p\}/g, uno(cfg.players[o]));
+}
+/* @guasa-fin */
 
 function updateVoiceBtn(){
   const b = $("#btnVoice");
@@ -1140,33 +1338,71 @@ function runAction(act){
   else if(act==="single") pressBurst();
 }
 
-/* --- modo un solo botón: 1 / 2 / 3 pulsaciones --- */
+/* --- modo un solo botón, pensado para que no salten puntos en el bolsillo ---
+   1 pulsación = no cuenta · 2 = pareja de la izquierda (A) · 3 = pareja de la derecha (B)
+   4 o más = no cuenta · mantener 3 segundos = deshacer.
+   Las pulsaciones se cuentan al soltar y se resuelven cuando pasa la espera sin otra. */
+const HOLD_UNDO_MS = 3000;
+const STREAM_GAP_MS = 700;   // señales sin suelta (teclas de medios) más juntas que esto = botón mantenido
 let burst = 0, burstT = null;
+let entrada = "tap";          // cómo llega la señal que se está procesando: "down" (habrá suelta) o "tap"
+let burstHeldKey = null, holdT = null, holdFired = false;
+let streamStart = 0, streamLast = 0, streamUndone = false;
+
 function pressBurst(){
+  if(entrada === "down") burstDown(); else burstTap();
+}
+function burstDown(){
+  burstHeldKey = teclaActual;
+  holdFired = false;
+  clearTimeout(burstT);        // mientras está apretado no se resuelve nada
+  clearTimeout(holdT);
+  holdT = setTimeout(()=>{ holdFired = true; holdUndo(); }, HOLD_UNDO_MS);
+}
+function burstUp(){
+  burstHeldKey = null;
+  clearTimeout(holdT);
+  if(holdFired){ holdFired = false; if(burst) restartBurstWait(); return; }
   burst++;
+  restartBurstWait();
+}
+function burstTap(){
+  const t = Date.now();
+  if(t - streamLast > STREAM_GAP_MS){ streamStart = t; streamUndone = false; }
+  streamLast = t;
+  if(streamUndone) return;
+  if(t - streamStart >= HOLD_UNDO_MS){ streamUndone = true; holdUndo(); return; }
+  burst++;
+  restartBurstWait();
+}
+function holdUndo(){
   clearTimeout(burstT);
-  if(burst >= 3){ resolveBurst(); return; }   // tres: deshacer, sin esperar más
+  burst = 0; hideHint();
+  if(past.length) undo(); else toast("Nada que deshacer");
+}
+function restartBurstWait(){
+  clearTimeout(burstT);
   showHint(burst);
   burstT = setTimeout(resolveBurst, cfg.burstWindow || 5000);
 }
 function resolveBurst(){
   clearTimeout(burstT);
   const n = burst; burst = 0; hideHint();
-  if(!n) return;
-  const srvTeam = serverOf(st)[0];
-  if(n === 1) addPoint(srvTeam, "remote");
-  else if(n === 2) addPoint(1-srvTeam, "remote");
-  else undo();
+  if(n === 2) addPoint(0, "remote");
+  else if(n === 3) addPoint(1, "remote");
+  else if(n > 3) toast("Demasiadas pulsaciones: no se apunta nada");
+  // una sola pulsación: probablemente el bolsillo, no se hace nada
 }
 function burstText(n){
-  const srv = serverOf(st)[0];
-  if(n === 1) return "Punto para " + cfg.names[srv] + " · otra pulsación lo cambia";
-  if(n === 2) return "Punto para " + cfg.names[1-srv] + " · una más deshace";
-  return "Deshacer";
+  if(n === 1) return "Una pulsación no cuenta · 2 = " + cfg.names[0] + " · 3 = " + cfg.names[1];
+  if(n === 2) return "Punto para " + cfg.names[0] + " · una más: " + cfg.names[1];
+  if(n === 3) return "Punto para " + cfg.names[1];
+  return "Demasiadas pulsaciones: no se apuntará";
 }
 let hintT;
 function showHint(n){
   const h = $("#pressHint");
+  h.classList.toggle("b", n >= 3);
   h.querySelectorAll(".dot").forEach((d,i)=>d.classList.toggle("on", i < n));
   h.querySelector(".txt").textContent = burstText(n);
   const bar = h.querySelector(".bar i");
@@ -1205,10 +1441,26 @@ addEventListener("keydown", e=>{
   if(!ids.length) return;
   // una pulsación, una línea en el registro: el número de tecla es lo que más dice
   logSignal(ids.find(i => /^key:cod\d+$/.test(i)) || ids[0]);
-  for(const id of ids){
-    if(fire(id, true)){ e.preventDefault(); return; }
-  }
+  conSuelta(claveDeTecla(e), ()=>{
+    for(const id of ids){
+      if(fire(id, true)){ e.preventDefault(); return; }
+    }
+  });
 }, true);
+
+/* al soltar la tecla que se apretó en modo un botón, cuenta la pulsación */
+addEventListener("keyup", e=>{
+  if(burstHeldKey !== null && burstHeldKey === claveDeTecla(e)){ e.preventDefault(); burstUp(); }
+}, true);
+
+function claveDeTecla(e){ return "key:" + (e.code || e.key || e.keyCode); }
+
+/** Procesa una señal de la que luego llegará la suelta (teclado, gamepad). */
+let teclaActual = null;
+function conSuelta(clave, fn){
+  entrada = "down"; teclaActual = clave;
+  try{ fn(); } finally { entrada = "tap"; teclaActual = null; }
+}
 
 /* --- Android: mantener el foco del teclado en la página ---
    El mando Bluetooth es un teclado: sus teclas sólo llegan aquí si la página tiene
@@ -1238,7 +1490,8 @@ function startPadLoop(){
       any = true;
       p.buttons.forEach((b,i)=>{
         const k = p.index + ":" + i, down = b.pressed || b.value > .5;
-        if(down && !padPrev[k]) fire("pad:" + i);
+        if(down && !padPrev[k]) conSuelta("pad:" + k, ()=>fire("pad:" + i));
+        else if(!down && padPrev[k] && burstHeldKey === "pad:" + k) burstUp();
         padPrev[k] = down;
       });
     }
@@ -1394,7 +1647,8 @@ function renderSwitches(){
     row.onclick = ()=>{
       const k = sw.dataset.cfg;
       cfg[k] = !cfg[k];
-      sw.classList.toggle("on", cfg[k]);
+      // el mismo ajuste puede estar en dos pantallas (modo guasa): las dos al día
+      $$('.sw[data-cfg="'+k+'"]').forEach(x=>x.classList.toggle("on", cfg[k]));
       if(k === "oneButton"){
         renderBinds();
         if(cfg.oneButton){
@@ -1407,12 +1661,15 @@ function renderSwitches(){
         }
       }
       if(k === "wake") cfg.wake ? requestWake() : releaseWake();
+      if(k === "guasa" && cfg.guasa && !cfg.voice){
+        cfg.voice = true; updateVoiceBtn(); renderSwitches(); loadVoices();
+      }
       if(k === "voice"){
         updateVoiceBtn();
         if(cfg.voice){ loadVoices(); renderVoiceSel(); say("voz activada cantaré el marcador", true); }
         else shutUp();
       }
-      if(k === "autoSwap" || k === "golden" || k === "tiebreak" || k === "superTb") render();
+      if(k === "golden" || k === "tiebreak" || k === "superTb") render();
       save();
     };
   });
@@ -1428,7 +1685,9 @@ function renderServerSelect(){
   [[0,0],[0,1],[1,0],[1,1]].forEach(([t,p])=>{
     const o = document.createElement("option");
     o.value = t+","+p;
-    o.textContent = cfg.players[t][p] + "  (" + cfg.names[t] + ")";
+    const n = cfg.players[t][p];
+    const side = n === DEF_PLAYERS[t][p] ? "" : (p === 0 ? " · izquierda" : " · derecha");
+    o.textContent = n + side + "  (" + cfg.names[t] + ")";
     sel.appendChild(o);
   });
   sel.value = prev;
@@ -1456,8 +1715,8 @@ function readNames(){
   const v = (id,def) => ($(id).value.trim() || def);
   cfg.names = [v("#nameA","Pareja A"), v("#nameB","Pareja B")];
   cfg.players = [
-    [v("#a1","Jugador 1"), v("#a2","Jugador 2")],
-    [v("#b1","Jugador 3"), v("#b2","Jugador 4")]
+    [v("#a1",DEF_PLAYERS[0][0]), v("#a2",DEF_PLAYERS[0][1])],
+    [v("#b1",DEF_PLAYERS[1][0]), v("#b2",DEF_PLAYERS[1][1])]
   ];
 }
 function readSetup(){
@@ -1498,7 +1757,6 @@ function wire(){
   $("#btnUndo").onclick = undo;
   $("#btnRedo").onclick = redo;
   $("#btnNew").onclick  = ()=>{ renderSetup(); openModal("setup"); };
-  $("#btnSwap").onclick = ()=>{ st.swapped = !st.swapped; render(); save(); };
   $("#btnVoice").onclick = ()=>{
     cfg.voice = !cfg.voice; updateVoiceBtn(); renderSwitches(); save();
     if(cfg.voice){ loadVoices(); say("voz activada", true); toast("Voz activada"); }
@@ -1511,14 +1769,12 @@ function wire(){
   $("#voiceSel").onchange = e=>{ cfg.voiceName = e.target.value; save(); say("voz seleccionada", true); };
   $("#btnFull").onclick = toggleFull;
   $("#btnFull2").onclick = toggleFull;
-  $("#btnSwap2").onclick = ()=>{ st.swapped = !st.swapped; render(); save(); toast("Lados intercambiados"); };
   $("#btnCfg").onclick  = ()=>{ renderBinds(); renderSwitches(); renderPadState(); loadVoices(); renderVoiceSel(); openModal("settings"); };
 
   $("#btnStart").onclick = ()=>{
     readSetup();
     past=[]; future=[];
-    const sw = st.swapped;
-    st = newState(); st.swapped = sw;
+    st = newState();
     if(cfg.superTb && cfg.bestOf === 1){ /* sin sentido en 1 set */ }
     closeModal("setup");
     render(); save();

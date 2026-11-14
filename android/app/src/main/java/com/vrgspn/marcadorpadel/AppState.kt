@@ -16,6 +16,9 @@ import kotlinx.coroutines.launch
 
 enum class Screen { MATCH, SETUP, SETTINGS }
 
+/** Tiempo que hay que mantener apretado el mando para deshacer. */
+const val HOLD_UNDO_MS = 3000L
+
 /** Aviso grande en el centro de la pantalla (cambio de lado, tie-break, set…). */
 data class Banner(val big: String, val sub: String = "", val id: Long = System.currentTimeMillis())
 
@@ -83,7 +86,6 @@ class AppState(app: Application) : AndroidViewModel(app) {
 
         val (after, ev) = Rules.applyPoint(m, team, cfg)
         m = after
-        if (ev.side && cfg.autoSwap) m = m.copy(swapped = !m.swapped)
         if (ev.match) m = m.copy(elapsed = now - (m.startedAt.takeIf { it > 0 } ?: now))
         match = m
         store.saveMatch(m)
@@ -94,7 +96,7 @@ class AppState(app: Application) : AndroidViewModel(app) {
 
         if (cfg.voice) {
             val (parts, asSentences) = Phrases.announce(m, team, ev, cfg)
-            speech.say(parts, cfg.voiceRate, asSentences)
+            speech.say(parts, cfg.voiceRate, asSentences, Guasa.phrase(team, ev, cfg))
         }
 
         when {
@@ -138,16 +140,14 @@ class AppState(app: Application) : AndroidViewModel(app) {
 
     fun resetScore() {
         past.clear(); future.clear()
-        val swapped = match.swapped
-        match = Match(swapped = swapped)
+        match = Match()
         store.saveMatch(match)
         showToast("Marcador a cero")
     }
 
     fun startMatch() {
         past.clear(); future.clear()
-        val swapped = match.swapped
-        match = Match(swapped = swapped)
+        match = Match()
         store.saveMatch(match)
         screen = Screen.MATCH
         val first = cfg.players[cfg.firstServeTeam][cfg.firstServePlayer]
@@ -164,61 +164,86 @@ class AppState(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    fun swapSides() {
-        match = match.copy(swapped = !match.swapped)
-        store.saveMatch(match)
-    }
-
     fun scoreLine(): String = match.sets.joinToString("  ") { s ->
         s.a.toString() + "-" + s.b + if (s.hadTiebreak) "(" + minOf(s.tbA, s.tbB) + ")" else ""
     }
 
     // ------------------------------------------------------------------ mando
 
-    /** Llega una señal del mando (tecla de volumen, botón de medios, etc.). */
-    fun remoteSignal(label: String) {
+    /*
+     * Mando de un botón, pensado para que no salten puntos en el bolsillo:
+     *   1 pulsación          → no cuenta
+     *   2 pulsaciones        → punto para la pareja de la izquierda (A)
+     *   3 pulsaciones        → punto para la pareja de la derecha (B)
+     *   4 o más              → no cuenta
+     *   mantener 3 segundos  → deshacer
+     * Las pulsaciones se cuentan al soltar y se resuelven cuando pasa la espera
+     * entre pulsaciones sin que llegue otra.
+     */
+
+    private var keyHeld = false   // hay un botón apretado del que aún no ha llegado la suelta
+    private var holdFired = false
+    private var holdJob: Job? = null
+
+    private fun isDirectKey(label: String) = !cfg.oneButton &&
+        label in setOf("Volumen −", "Izquierda", "Volumen +", "Derecha")
+
+    /** Se aprieta un botón del mando (tecla de volumen, botón de medios, etc.). */
+    fun remoteDown(label: String) {
         lastSignal = label
-        if (cfg.oneButton) {
-            pressBurst()
-        } else {
-            // sin modo un botón, bajar volumen es la pareja de la izquierda y subirlo la de la derecha
-            val left = if (match.swapped) 1 else 0
-            when (label) {
-                "Volumen −", "Izquierda" -> addPoint(left, true)
-                "Volumen +", "Derecha" -> addPoint(1 - left, true)
-                else -> pressBurst()
-            }
+        if (isDirectKey(label)) {
+            // sin modo un botón, bajar volumen es la pareja A (izquierda) y subirlo la B (derecha)
+            addPoint(if (label == "Volumen −" || label == "Izquierda") 0 else 1, true)
+            return
+        }
+        // (las repeticiones de una tecla mantenida ya se filtran antes de llegar aquí)
+        keyHeld = true
+        holdFired = false
+        burstJob?.cancel()              // mientras está apretado no se resuelve nada
+        holdJob?.cancel()
+        holdJob = viewModelScope.launch {
+            delay(HOLD_UNDO_MS)
+            holdFired = true
+            burstCount = 0
+            if (canUndo) undo() else showToast("Nada que deshacer")
         }
     }
 
-    private fun pressBurst() {
-        burstJob?.cancel()
-        burstCount += 1
-        burstId = System.currentTimeMillis()
-        if (burstCount >= 3) {
-            burstCount = 0
-            undo()
+    /** Se suelta el botón del mando. */
+    fun remoteUp(label: String) {
+        if (isDirectKey(label) || !keyHeld) return
+        keyHeld = false
+        holdJob?.cancel()
+        if (holdFired) {                // fue un «mantener»: ya se deshizo
+            holdFired = false
+            if (burstCount > 0) restartBurstWait()
             return
         }
+        burstCount += 1
+        restartBurstWait()
+    }
+
+    private fun restartBurstWait() {
+        burstId = System.currentTimeMillis()
+        burstJob?.cancel()
         burstJob = viewModelScope.launch {
             delay(cfg.burstWindowMs)
             val n = burstCount
             burstCount = 0
-            val srv = Rules.serverOf(match, cfg).first
             when (n) {
-                1 -> addPoint(srv, true)
-                2 -> addPoint(1 - srv, true)
+                2 -> addPoint(0, true)
+                3 -> addPoint(1, true)
+                1 -> {}                  // una sola pulsación: probablemente el bolsillo
+                else -> showToast("Demasiadas pulsaciones: no se apunta nada")
             }
         }
     }
 
-    fun burstText(n: Int): String {
-        val srv = Rules.serverOf(match, cfg).first
-        return when (n) {
-            1 -> "Punto para " + cfg.names[srv] + " · otra pulsación lo cambia"
-            2 -> "Punto para " + cfg.names[1 - srv] + " · una más deshace"
-            else -> "Deshacer"
-        }
+    fun burstText(n: Int): String = when (n) {
+        1 -> "Una pulsación no cuenta · 2 = " + cfg.names[0] + " · 3 = " + cfg.names[1]
+        2 -> "Punto para " + cfg.names[0] + " · una más: " + cfg.names[1]
+        3 -> "Punto para " + cfg.names[1]
+        else -> "Demasiadas pulsaciones: no se apuntará"
     }
 
     // ------------------------------------------------------------------ avisos

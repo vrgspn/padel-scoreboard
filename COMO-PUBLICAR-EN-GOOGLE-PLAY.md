@@ -175,9 +175,10 @@ Funciona con los pulsadores Bluetooth de hacer fotos, esos mandos pequeños que 
 la mano o van en el reloj. La app captura las teclas de volumen que envían, así que
 puedes apuntar el punto sin acercarte al móvil.
 
-Si tu mando tiene un solo botón: una pulsación suma el punto a quien saca, dos al que
-resta y tres deshacen. El tiempo de espera entre pulsaciones es ajustable, para mandos
-que tardan en responder.
+Si tu mando tiene un solo botón: dos pulsaciones suman el punto a la pareja de la
+izquierda, tres a la de la derecha, y mantenerlo apretado 3 segundos deshace. Una sola
+pulsación no cuenta, así no saltan puntos con el mando en el bolsillo. El tiempo de
+espera entre pulsaciones es ajustable.
 
 También puedes apuntar tocando cada mitad de la pantalla.
 
