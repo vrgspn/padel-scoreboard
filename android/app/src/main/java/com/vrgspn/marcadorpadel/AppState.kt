@@ -138,6 +138,35 @@ class AppState(app: Application) : AndroidViewModel(app) {
         buzz(15)
     }
 
+    /** Desde ya saca [team]/[player]: el tanteo sigue igual y el orden continúa desde él. */
+    fun setServer(team: Int, player: Int) {
+        if (match.finished) return
+        val fresh = match.startedAt == 0L && past.isEmpty()
+        if (!fresh) {
+            past.addLast(match)
+            if (past.size > 200) past.removeFirst()
+            future.clear()
+        }
+        val m = match.copy(serveBaseTeam = team, serveBasePlayer = player, serveOff = Rules.rawServeIdx(match))
+        match = m
+        store.saveMatch(m)
+        // antes del primer punto también es el saque inicial
+        if (fresh) updateCfg { it.copy(firstServeTeam = team, firstServePlayer = player) }
+        buzz(20)
+        val name = cfg.players[team][player]
+        showToast("Saca $name")
+        if (cfg.voice) speech.say(listOf(Phrases.serveLine(m, cfg).ifEmpty { "saca $name" }), cfg.voiceRate)
+    }
+
+    /** Saque inicial desde la configuración; si aún no se ha jugado, manda sobre lo elegido arriba. */
+    fun setFirstServe(team: Int, player: Int) {
+        updateCfg { it.copy(firstServeTeam = team, firstServePlayer = player) }
+        if (match.startedAt == 0L && past.isEmpty() && match.serveBaseTeam >= 0) {
+            match = match.copy(serveBaseTeam = -1, serveBasePlayer = 0, serveOff = 0)
+            store.saveMatch(match)
+        }
+    }
+
     fun resetScore() {
         past.clear(); future.clear()
         match = Match()

@@ -122,8 +122,11 @@ enum Phrases {
  */
 enum Guasa {
 
-    /// Uno de cada cuatro puntos, más o menos, al azar.
-    private static let pointChance = 0.25
+    /// Probabilidad de frase en un punto normal.
+    private static let pointChance = 0.4
+    /// Como mucho, dos puntos seguidos sin frase: el tercero siempre la lleva.
+    private static let maxSilent = 2
+    private static var silent = 0
 
     private static let PUNTO_PIERDE: [String] = [
         "{p}, esa bola la devolvía mejor mi abuela con el andador",
@@ -278,19 +281,29 @@ enum Guasa {
         "{p}, borra este partido de tu memoria. Nosotros no lo haremos"
     ]
 
-    /// Bolsas barajadas: no se repite una frase hasta haber dicho todas las de su lista.
+    /// Bolsas barajadas: siempre al azar, nunca en el orden de la lista, y no se repite
+    /// una frase hasta haber dicho todas las de su lista. Al rebarajar, la primera de la
+    /// bolsa nueva nunca es la última que se dijo.
     private static var bags: [String: [String]] = [:]
+    private static var last: [String: String] = [:]
 
     private static func draw(_ key: String, _ pool: [String]) -> String {
         var bag = bags[key] ?? []
-        if bag.isEmpty { bag = pool.shuffled() }
+        if bag.isEmpty {
+            bag = pool.shuffled()
+            if bag.count > 1, bag[0] == last[key] {
+                bag.swapAt(0, Int.random(in: 1..<bag.count))
+            }
+        }
         let s = bag.removeFirst()
         bags[key] = bag
+        last[key] = s
         return s
     }
 
     /// Coletilla para el punto que acaba de ganar `winner`, o "" si no toca.
-    /// Siempre al acabar juego, set o partido; en los demás puntos, uno de cada cuatro.
+    /// Siempre al acabar juego, set o partido; en los demás puntos, al azar (4 de cada 10)
+    /// y nunca más de dos puntos seguidos sin frase.
     /// La mitad de las veces da caña a quien pierde y la otra mitad alaba a quien gana.
     static func phrase(winner: Int, _ ev: Events, _ cfg: Cfg) -> String {
         guard cfg.guasa, winner == 0 || winner == 1 else { return "" }
@@ -300,11 +313,13 @@ enum Guasa {
             key = "PARTIDO"
         } else if ev.game || ev.set {
             key = alaba ? "JUEGO_GANA" : "JUEGO_PIERDE"
-        } else if Double.random(in: 0..<1) < pointChance {
+        } else if silent >= maxSilent || Double.random(in: 0..<1) < pointChance {
             key = alaba ? "PUNTO_GANA" : "PUNTO_PIERDE"
         } else {
+            silent += 1
             return ""
         }
+        silent = 0
         let pools: [String: [String]] = [
             "PUNTO_PIERDE": PUNTO_PIERDE, "PUNTO_GANA": PUNTO_GANA,
             "JUEGO_PIERDE": JUEGO_PIERDE, "JUEGO_GANA": JUEGO_GANA, "PARTIDO": PARTIDO

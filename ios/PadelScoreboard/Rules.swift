@@ -7,23 +7,23 @@ enum Rules {
 
     static func setsNeeded(_ cfg: Cfg) -> Int { (cfg.bestOf + 1) / 2 }
 
-    /// Orden de saque: empieza el jugador elegido; luego el de la derecha (1) de la otra pareja,
-    /// el compañero del primero y, por último, el de la izquierda (0) de la otra pareja.
-    static func serveOrder(_ cfg: Cfg) -> [(team: Int, player: Int)] {
-        let t = cfg.firstServeTeam
-        let p = cfg.firstServePlayer
+    /// Orden de saque: empieza el jugador elegido; luego el del mismo lado de la otra pareja,
+    /// el compañero del primero y, por último, el compañero de ese.
+    static func serveOrder(_ t: Int, _ p: Int) -> [(team: Int, player: Int)] {
         let o = 1 - t
-        return [(t, p), (o, 1), (t, 1 - p), (o, 0)]
+        return [(t, p), (o, p), (t, 1 - p), (o, 1 - p)]
+    }
+
+    /// Turno de saque sin el ajuste manual.
+    static func rawServeIdx(_ m: Match) -> Int {
+        m.tiebreak ? m.tbStartIdx + (m.tb[0] + m.tb[1] + 1) / 2 : m.serveIdx
     }
 
     static func serverOf(_ m: Match, _ cfg: Cfg) -> (team: Int, player: Int) {
-        let ord = serveOrder(cfg)
-        if m.tiebreak {
-            let n = m.tb[0] + m.tb[1]
-            let i = ((m.tbStartIdx + (n + 1) / 2) % 4 + 4) % 4
-            return ord[i]
-        }
-        let i = (m.serveIdx % 4 + 4) % 4
+        let ord = m.serveBaseTeam >= 0
+            ? serveOrder(m.serveBaseTeam, m.serveBasePlayer)
+            : serveOrder(cfg.firstServeTeam, cfg.firstServePlayer)
+        let i = ((rawServeIdx(m) - m.serveOff) % 4 + 4) % 4
         return ord[i]
     }
 

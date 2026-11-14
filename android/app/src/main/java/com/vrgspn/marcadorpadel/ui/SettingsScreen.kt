@@ -23,7 +23,7 @@ import com.vrgspn.marcadorpadel.Screen
 fun GuasaSwitch(state: AppState) {
     SwitchRow(
         "Modo guasa 😈",
-        "Tras el tanteo, de vez en cuando (uno de cada cuatro puntos, al azar) se mete con quien pierde el punto " +
+        "Tras el tanteo, en muchos puntos (al azar, y nunca más de dos puntos seguidos sin frase) se mete con quien pierde el punto " +
             "o pone por las nubes a quien lo gana. Al acabar cada juego, set y partido, siempre. Activa la voz.",
         state.cfg.guasa
     ) { v -> state.updateCfg { it.copy(guasa = v, voice = it.voice || v) } }

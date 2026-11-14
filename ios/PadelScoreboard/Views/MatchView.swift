@@ -18,9 +18,10 @@ struct MatchView: View {
                 let numberSize: CGFloat = portrait
                     ? min(h * 0.30, w * 0.44)
                     : min(h * 0.52, w * 0.30)
+                // nombre de la pareja grande, que se lea desde lejos
                 let nameSize: CGFloat = portrait
-                    ? min(max(w * 0.055, 22), 40)
-                    : min(max(h * 0.065, 18), 38)
+                    ? min(max(w * 0.075, 28), 56)
+                    : min(max(h * 0.09, 24), 54)
                 let playerSize: CGFloat = portrait
                     ? min(max(w * 0.055, 17), 34)
                     : min(max(h * 0.075, 16), 34)
@@ -175,12 +176,21 @@ private struct TeamPanel: View {
                 .lineLimit(2)
                 .minimumScaleFactor(0.5)
                 .multilineTextAlignment(.center)
+                .padding(.bottom, -numberSize * 0.08)   // pegado al tanteo
             Text(label)
                 .foregroundStyle(P.txt)
                 .font(.system(size: label == "AD" ? numberSize * 0.62 : numberSize, weight: .heavy))
                 .lineLimit(1)
                 .minimumScaleFactor(0.4)
                 .monospacedDigit()
+            // sets ganados: una pelota por cada uno, centradas bajo el tanteo
+            let won = state.match.setsWon[team]
+            if won > 0 {
+                HStack(spacing: 8) {
+                    ForEach(0..<won, id: \.self) { _ in Ball(size: nameSize * 0.6) }
+                }
+                .padding(.top, 6)
+            }
         }
         .frame(maxWidth: .infinity)
     }
@@ -248,7 +258,7 @@ struct Ball: View {
     }
 }
 
-/// Juegos de cada set ya cerrado y los del set en curso.
+/// Juegos del set en curso.
 private struct GamesRow: View {
 
     @EnvironmentObject private var state: AppState
@@ -257,14 +267,6 @@ private struct GamesRow: View {
     var body: some View {
         let match = state.match
         HStack(spacing: 6) {
-            ForEach(Array(match.sets.enumerated()), id: \.offset) { _, s in
-                GameBox(
-                    text: String(s.games(team)),
-                    sup: s.hadTiebreak ? String(s.tb(team)) : nil,
-                    color: s.games(team) > s.games(1 - team) ? P.txt : P.dim,
-                    background: P.panel2
-                )
-            }
             if !match.finished {
                 GameBox(
                     text: String(match.games[team]),

@@ -22,6 +22,10 @@ data class Match(
     val tb: List<Int> = listOf(0, 0),
     val tbTarget: Int = 7,
     val tbStartIdx: Int = 0,
+    /** Quién se eligió a mano para sacar (-1 = el saque inicial de los ajustes) y en qué turno. */
+    val serveBaseTeam: Int = -1,
+    val serveBasePlayer: Int = 0,
+    val serveOff: Int = 0,
     val startedAt: Long = 0L,
     val elapsed: Long = 0L,
     val finished: Boolean = false,
@@ -84,23 +88,22 @@ object Rules {
     fun setsNeeded(cfg: Cfg) = (cfg.bestOf + 1) / 2
 
     /**
-     * Orden de saque: empieza el jugador elegido; luego el de la derecha (1) de la otra pareja,
-     * el compañero del primero y, por último, el de la izquierda (0) de la otra pareja.
+     * Orden de saque: empieza el jugador elegido; luego el del mismo lado de la otra pareja,
+     * el compañero del primero y, por último, el compañero de ese.
      */
-    fun serveOrder(cfg: Cfg): List<Pair<Int, Int>> {
-        val t = cfg.firstServeTeam
-        val p = cfg.firstServePlayer
+    fun serveOrder(t: Int, p: Int): List<Pair<Int, Int>> {
         val o = 1 - t
-        return listOf(t to p, o to 1, t to (1 - p), o to 0)
+        return listOf(t to p, o to p, t to (1 - p), o to (1 - p))
     }
 
+    /** Turno de saque sin el ajuste manual. */
+    fun rawServeIdx(m: Match): Int =
+        if (m.tiebreak) m.tbStartIdx + (m.tb[0] + m.tb[1] + 1) / 2 else m.serveIdx
+
     fun serverOf(m: Match, cfg: Cfg): Pair<Int, Int> {
-        val ord = serveOrder(cfg)
-        if (m.tiebreak) {
-            val n = m.tb[0] + m.tb[1]
-            return ord[((m.tbStartIdx + (n + 1) / 2) % 4 + 4) % 4]
-        }
-        return ord[(m.serveIdx % 4 + 4) % 4]
+        val ord = if (m.serveBaseTeam >= 0) serveOrder(m.serveBaseTeam, m.serveBasePlayer)
+        else serveOrder(cfg.firstServeTeam, cfg.firstServePlayer)
+        return ord[((rawServeIdx(m) - m.serveOff) % 4 + 4) % 4]
     }
 
     fun serverName(m: Match, cfg: Cfg): String {

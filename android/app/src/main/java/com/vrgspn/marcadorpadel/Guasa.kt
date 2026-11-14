@@ -12,8 +12,11 @@ import kotlin.random.Random
  */
 object Guasa {
 
-    /** Uno de cada cuatro puntos, más o menos, al azar. */
-    private const val POINT_CHANCE = 0.25
+    /** Probabilidad de frase en un punto normal. */
+    private const val POINT_CHANCE = 0.4
+    /** Como mucho, dos puntos seguidos sin frase: el tercero siempre la lleva. */
+    private const val MAX_SILENT = 2
+    private var silent = 0
 
     private val PUNTO_PIERDE = listOf(
         "{p}, esa bola la devolvía mejor mi abuela con el andador",
@@ -168,18 +171,31 @@ object Guasa {
         "{p}, borra este partido de tu memoria. Nosotros no lo haremos"
     )
 
-    /** Bolsas barajadas: no se repite una frase hasta haber dicho todas las de su lista. */
+    /**
+     * Bolsas barajadas: siempre al azar, nunca en el orden de la lista, y no se repite
+     * una frase hasta haber dicho todas las de su lista. Al rebarajar, la primera de la
+     * bolsa nueva nunca es la última que se dijo.
+     */
     private val bags = HashMap<String, ArrayDeque<String>>()
+    private val last = HashMap<String, String>()
 
     private fun draw(key: String, pool: List<String>): String {
         val bag = bags.getOrPut(key) { ArrayDeque() }
-        if (bag.isEmpty()) bag.addAll(pool.shuffled())
-        return bag.removeFirst()
+        if (bag.isEmpty()) {
+            val s = pool.shuffled().toMutableList()
+            if (s.size > 1 && s[0] == last[key]) {
+                val j = 1 + Random.nextInt(s.size - 1)
+                s[0] = s[j].also { s[j] = s[0] }
+            }
+            bag.addAll(s)
+        }
+        return bag.removeFirst().also { last[key] = it }
     }
 
     /**
      * Coletilla para el punto que acaba de ganar [winner], o "" si no toca.
-     * Siempre al acabar juego, set o partido; en los demás puntos, uno de cada cuatro.
+     * Siempre al acabar juego, set o partido; en los demás puntos, al azar (4 de cada 10)
+     * y nunca más de dos puntos seguidos sin frase.
      * La mitad de las veces da caña a quien pierde y la otra mitad alaba a quien gana.
      */
     fun phrase(winner: Int, ev: Events, cfg: Cfg): String {
@@ -188,10 +204,11 @@ object Guasa {
         val (key, pool) = when {
             ev.match -> "PARTIDO" to PARTIDO
             ev.game || ev.set -> if (alaba) "JUEGO_GANA" to JUEGO_GANA else "JUEGO_PIERDE" to JUEGO_PIERDE
-            Random.nextDouble() < POINT_CHANCE ->
+            silent >= MAX_SILENT || Random.nextDouble() < POINT_CHANCE ->
                 if (alaba) "PUNTO_GANA" to PUNTO_GANA else "PUNTO_PIERDE" to PUNTO_PIERDE
-            else -> return ""
+            else -> { silent++; return "" }
         }
+        silent = 0
         val loser = 1 - winner
         return draw(key, pool)
             .replace("{G}", cfg.names[winner])

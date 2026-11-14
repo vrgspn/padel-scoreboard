@@ -5,7 +5,7 @@ Las frases que suelta el marcador con el **modo guasa** activado están todas en
 
 | Lista | Cuándo se usa |
 |---|---|
-| `PUNTO_PIERDE` / `PUNTO_GANA` | Tras uno de cada cuatro puntos, al azar |
+| `PUNTO_PIERDE` / `PUNTO_GANA` | En 4 de cada 10 puntos, al azar, y nunca más de dos puntos seguidos sin frase |
 | `JUEGO_PIERDE` / `JUEGO_GANA` | Siempre, al acabar cada juego o set |
 | `PARTIDO` | Siempre, al acabar el partido |
 

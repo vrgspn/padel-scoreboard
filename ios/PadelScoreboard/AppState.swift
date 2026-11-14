@@ -164,6 +164,43 @@ final class AppState: ObservableObject {
         buzz(15)
     }
 
+    /// Desde ya saca `team`/`player`: el tanteo sigue igual y el orden continúa desde él.
+    func setServer(team: Int, player: Int) {
+        guard !match.finished else { return }
+        let fresh = match.startedAt == 0 && past.isEmpty
+        if !fresh {
+            past.append(match)
+            if past.count > 200 { past.removeFirst() }
+            future.removeAll()
+        }
+        var m = match
+        m.serveBaseTeam = team
+        m.serveBasePlayer = player
+        m.serveOff = Rules.rawServeIdx(match)
+        match = m
+        store.saveMatch(m)
+        // antes del primer punto también es el saque inicial
+        if fresh { updateCfg { var c = $0; c.firstServeTeam = team; c.firstServePlayer = player; return c } }
+        buzz(20)
+        let name = cfg.players[team][player]
+        showToast("Saca " + name)
+        if cfg.voice {
+            let line = Phrases.serveLine(m, cfg)
+            speech.say([line.isEmpty ? "saca " + name : line], rate: cfg.voiceRate)
+        }
+    }
+
+    /// Saque inicial desde la configuración; si aún no se ha jugado, manda sobre lo elegido arriba.
+    func setFirstServe(team: Int, player: Int) {
+        updateCfg { var c = $0; c.firstServeTeam = team; c.firstServePlayer = player; return c }
+        if match.startedAt == 0 && past.isEmpty && match.serveBaseTeam >= 0 {
+            match.serveBaseTeam = -1
+            match.serveBasePlayer = 0
+            match.serveOff = 0
+            store.saveMatch(match)
+        }
+    }
+
     func resetScore() {
         past.removeAll()
         future.removeAll()

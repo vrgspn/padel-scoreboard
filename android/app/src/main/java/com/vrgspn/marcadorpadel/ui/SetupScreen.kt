@@ -69,7 +69,7 @@ fun SetupScreen(state: AppState) {
         }
 
         Card("Saque inicial") {
-            Help("Empieza sacando quien elijas. Después saca el de la derecha de la otra pareja, luego el compañero del primero y por último el de la izquierda de la otra pareja.")
+            Help("Empieza sacando quien elijas. Después saca el del mismo lado de la otra pareja, luego el compañero del primero y por último el compañero de ese. Durante el partido puedes cambiarlo con el botón 🎾 de arriba.")
             Spacer(Modifier.height(10.dp))
             val opciones = listOf(
                 cfg.players[0][0] to (0 to 0),
@@ -83,9 +83,7 @@ fun SetupScreen(state: AppState) {
                         fila.forEach { (nombre, pareja) ->
                             val sel = cfg.firstServeTeam == pareja.first && cfg.firstServePlayer == pareja.second
                             PickButton(nombre, sel, Modifier.weight(1f)) {
-                                state.updateCfg {
-                                    it.copy(firstServeTeam = pareja.first, firstServePlayer = pareja.second)
-                                }
+                                state.setFirstServe(pareja.first, pareja.second)
                             }
                         }
                     }

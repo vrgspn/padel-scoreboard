@@ -29,23 +29,39 @@ import kotlin.random.Random
  */
 object Guasa {
 
-    /** Uno de cada cuatro puntos, más o menos, al azar. */
-    private const val POINT_CHANCE = 0.25
+    /** Probabilidad de frase en un punto normal. */
+    private const val POINT_CHANCE = 0.4
+    /** Como mucho, dos puntos seguidos sin frase: el tercero siempre la lleva. */
+    private const val MAX_SILENT = 2
+    private var silent = 0
 
 ${NAMES.map(n => `    private val ${n} = listOf(\n${list(n, "        ")}\n    )`).join("\n\n")}
 
-    /** Bolsas barajadas: no se repite una frase hasta haber dicho todas las de su lista. */
+    /**
+     * Bolsas barajadas: siempre al azar, nunca en el orden de la lista, y no se repite
+     * una frase hasta haber dicho todas las de su lista. Al rebarajar, la primera de la
+     * bolsa nueva nunca es la última que se dijo.
+     */
     private val bags = HashMap<String, ArrayDeque<String>>()
+    private val last = HashMap<String, String>()
 
     private fun draw(key: String, pool: List<String>): String {
         val bag = bags.getOrPut(key) { ArrayDeque() }
-        if (bag.isEmpty()) bag.addAll(pool.shuffled())
-        return bag.removeFirst()
+        if (bag.isEmpty()) {
+            val s = pool.shuffled().toMutableList()
+            if (s.size > 1 && s[0] == last[key]) {
+                val j = 1 + Random.nextInt(s.size - 1)
+                s[0] = s[j].also { s[j] = s[0] }
+            }
+            bag.addAll(s)
+        }
+        return bag.removeFirst().also { last[key] = it }
     }
 
     /**
      * Coletilla para el punto que acaba de ganar [winner], o "" si no toca.
-     * Siempre al acabar juego, set o partido; en los demás puntos, uno de cada cuatro.
+     * Siempre al acabar juego, set o partido; en los demás puntos, al azar (4 de cada 10)
+     * y nunca más de dos puntos seguidos sin frase.
      * La mitad de las veces da caña a quien pierde y la otra mitad alaba a quien gana.
      */
     fun phrase(winner: Int, ev: Events, cfg: Cfg): String {
@@ -54,10 +70,11 @@ ${NAMES.map(n => `    private val ${n} = listOf(\n${list(n, "        ")}\n    )`
         val (key, pool) = when {
             ev.match -> "PARTIDO" to PARTIDO
             ev.game || ev.set -> if (alaba) "JUEGO_GANA" to JUEGO_GANA else "JUEGO_PIERDE" to JUEGO_PIERDE
-            Random.nextDouble() < POINT_CHANCE ->
+            silent >= MAX_SILENT || Random.nextDouble() < POINT_CHANCE ->
                 if (alaba) "PUNTO_GANA" to PUNTO_GANA else "PUNTO_PIERDE" to PUNTO_PIERDE
-            else -> return ""
+            else -> { silent++; return "" }
         }
+        silent = 0
         val loser = 1 - winner
         return draw(key, pool)
             .replace("{G}", cfg.names[winner])
@@ -83,24 +100,37 @@ const swift = `
  */
 enum Guasa {
 
-    /// Uno de cada cuatro puntos, más o menos, al azar.
-    private static let pointChance = 0.25
+    /// Probabilidad de frase en un punto normal.
+    private static let pointChance = 0.4
+    /// Como mucho, dos puntos seguidos sin frase: el tercero siempre la lleva.
+    private static let maxSilent = 2
+    private static var silent = 0
 
 ${NAMES.map(n => `    private static let ${n}: [String] = [\n${list(n, "        ")}\n    ]`).join("\n\n")}
 
-    /// Bolsas barajadas: no se repite una frase hasta haber dicho todas las de su lista.
+    /// Bolsas barajadas: siempre al azar, nunca en el orden de la lista, y no se repite
+    /// una frase hasta haber dicho todas las de su lista. Al rebarajar, la primera de la
+    /// bolsa nueva nunca es la última que se dijo.
     private static var bags: [String: [String]] = [:]
+    private static var last: [String: String] = [:]
 
     private static func draw(_ key: String, _ pool: [String]) -> String {
         var bag = bags[key] ?? []
-        if bag.isEmpty { bag = pool.shuffled() }
+        if bag.isEmpty {
+            bag = pool.shuffled()
+            if bag.count > 1, bag[0] == last[key] {
+                bag.swapAt(0, Int.random(in: 1..<bag.count))
+            }
+        }
         let s = bag.removeFirst()
         bags[key] = bag
+        last[key] = s
         return s
     }
 
     /// Coletilla para el punto que acaba de ganar \`winner\`, o "" si no toca.
-    /// Siempre al acabar juego, set o partido; en los demás puntos, uno de cada cuatro.
+    /// Siempre al acabar juego, set o partido; en los demás puntos, al azar (4 de cada 10)
+    /// y nunca más de dos puntos seguidos sin frase.
     /// La mitad de las veces da caña a quien pierde y la otra mitad alaba a quien gana.
     static func phrase(winner: Int, _ ev: Events, _ cfg: Cfg) -> String {
         guard cfg.guasa, winner == 0 || winner == 1 else { return "" }
@@ -110,11 +140,13 @@ ${NAMES.map(n => `    private static let ${n}: [String] = [\n${list(n, "        
             key = "PARTIDO"
         } else if ev.game || ev.set {
             key = alaba ? "JUEGO_GANA" : "JUEGO_PIERDE"
-        } else if Double.random(in: 0..<1) < pointChance {
+        } else if silent >= maxSilent || Double.random(in: 0..<1) < pointChance {
             key = alaba ? "PUNTO_GANA" : "PUNTO_PIERDE"
         } else {
+            silent += 1
             return ""
         }
+        silent = 0
         let pools: [String: [String]] = [
             "PUNTO_PIERDE": PUNTO_PIERDE, "PUNTO_GANA": PUNTO_GANA,
             "JUEGO_PIERDE": JUEGO_PIERDE, "JUEGO_GANA": JUEGO_GANA, "PARTIDO": PARTIDO
@@ -143,20 +175,26 @@ const js = `/* @guasa-inicio — generado: mismo banco que Android e iPhone (${t
 const GUASA = {
 ${NAMES.map(n => `  ${n}:[\n${list(n, "    ")}\n  ]`).join(",\n")}
 };
-const GUASA_PUNTO = 0.25;   // uno de cada cuatro puntos, más o menos, al azar
-const guasaBolsas = {};
-/** Bolsas barajadas: no se repite una frase hasta haber dicho todas las de su lista. */
+const GUASA_PUNTO = 0.4;    // probabilidad de frase en un punto normal
+const GUASA_MAX_SILENCIO = 2;   // como mucho, dos puntos seguidos sin frase: el tercero siempre la lleva
+let guasaSilencio = 0;
+const guasaBolsas = {}, guasaUltima = {};
+/** Bolsas barajadas: siempre al azar, nunca en el orden de la lista, y no se repite una
+    frase hasta haber dicho todas las de su lista. Al rebarajar, la primera de la bolsa
+    nueva nunca es la última que se dijo. */
 function guasaSaca(k){
   let b = guasaBolsas[k];
   if(!b || !b.length){
     b = GUASA[k].slice();
     for(let i=b.length-1;i>0;i--){ const j = Math.floor(Math.random()*(i+1)); [b[i],b[j]] = [b[j],b[i]]; }
+    if(b.length > 1 && b[0] === guasaUltima[k]){ const j = 1 + Math.floor(Math.random()*(b.length-1)); [b[0],b[j]] = [b[j],b[0]]; }
     guasaBolsas[k] = b;
   }
-  return b.shift();
+  return (guasaUltima[k] = b.shift());
 }
 /** Coletilla para el punto que acaba de ganar \`t\`, o "" si no toca.
-    Siempre al acabar juego, set o partido; en los demás puntos, uno de cada cuatro.
+    Siempre al acabar juego, set o partido; en los demás puntos, al azar (4 de cada 10)
+    y nunca más de dos puntos seguidos sin frase.
     La mitad de las veces da caña a quien pierde y la otra mitad alaba a quien gana. */
 function guasaFrase(t, ev){
   if(!cfg.guasa || (t !== 0 && t !== 1)) return "";
@@ -164,8 +202,9 @@ function guasaFrase(t, ev){
   let k;
   if(ev.match) k = "PARTIDO";
   else if(ev.game || ev.set) k = alaba ? "JUEGO_GANA" : "JUEGO_PIERDE";
-  else if(Math.random() < GUASA_PUNTO) k = alaba ? "PUNTO_GANA" : "PUNTO_PIERDE";
-  else return "";
+  else if(guasaSilencio >= GUASA_MAX_SILENCIO || Math.random() < GUASA_PUNTO) k = alaba ? "PUNTO_GANA" : "PUNTO_PIERDE";
+  else { guasaSilencio++; return ""; }
+  guasaSilencio = 0;
   const o = 1-t, uno = arr => arr[Math.floor(Math.random()*arr.length)];
   return guasaSaca(k)
     .replace(/\\{G\\}/g, cfg.names[t]).replace(/\\{P\\}/g, cfg.names[o])

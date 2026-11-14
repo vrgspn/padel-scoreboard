@@ -46,7 +46,7 @@ struct SetupView: View {
                 }
 
                 CardBox(title: "Saque inicial") {
-                    Help("Empieza sacando quien elijas. Después saca el de la derecha de la otra pareja, luego el compañero del primero y por último el de la izquierda de la otra pareja.")
+                    Help("Empieza sacando quien elijas. Después saca el del mismo lado de la otra pareja, luego el compañero del primero y por último el compañero de ese. Durante el partido puedes cambiarlo con el botón 🎾 de arriba.")
                     VStack(spacing: 6) {
                         HStack(spacing: 6) {
                             serveButton(cfg.players[0][0], team: 0, player: 0)
@@ -110,7 +110,7 @@ struct SetupView: View {
     private func serveButton(_ name: String, team: Int, player: Int) -> some View {
         let selected = state.cfg.firstServeTeam == team && state.cfg.firstServePlayer == player
         return PickButton(label: name, isSelected: selected) {
-            state.updateCfg { var c = $0; c.firstServeTeam = team; c.firstServePlayer = player; return c }
+            state.setFirstServe(team: team, player: player)
         }
     }
 }

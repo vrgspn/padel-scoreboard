@@ -44,6 +44,10 @@ struct Match: Codable, Equatable {
     var tb: [Int] = [0, 0]
     var tbTarget: Int = 7
     var tbStartIdx: Int = 0
+    /// Quién se eligió a mano para sacar (-1 = el saque inicial de los ajustes) y en qué turno.
+    var serveBaseTeam: Int = -1
+    var serveBasePlayer: Int = 0
+    var serveOff: Int = 0
     /// Milisegundos desde 1970, como en la versión Android.
     var startedAt: Double = 0
     var elapsed: Double = 0
@@ -67,6 +71,9 @@ struct Match: Codable, Equatable {
         tiebreak = (try? c.decode(Bool.self, forKey: .tiebreak)) ?? false
         tbTarget = (try? c.decode(Int.self, forKey: .tbTarget)) ?? 7
         tbStartIdx = (try? c.decode(Int.self, forKey: .tbStartIdx)) ?? 0
+        serveBaseTeam = (try? c.decode(Int.self, forKey: .serveBaseTeam)) ?? -1
+        serveBasePlayer = (try? c.decode(Int.self, forKey: .serveBasePlayer)) ?? 0
+        serveOff = (try? c.decode(Int.self, forKey: .serveOff)) ?? 0
         startedAt = (try? c.decode(Double.self, forKey: .startedAt)) ?? 0
         elapsed = (try? c.decode(Double.self, forKey: .elapsed)) ?? 0
         finished = (try? c.decode(Bool.self, forKey: .finished)) ?? false

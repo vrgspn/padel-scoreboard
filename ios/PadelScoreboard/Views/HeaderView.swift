@@ -3,13 +3,18 @@ import SwiftUI
 struct HeaderView: View {
 
     @EnvironmentObject private var state: AppState
+    @Environment(\.horizontalSizeClass) private var hSize
+    @State private var pickServer = false
+
+    /// En un iPhone, botones algo más pequeños para que quepa todo.
+    private var btn: CGFloat { hSize == .compact ? 40 : 46 }
+    private var gap: CGFloat { hSize == .compact ? 4 : 6 }
 
     var body: some View {
         let match = state.match
-        HStack(spacing: 6) {
-            // izquierda: sets y formato
+        HStack(spacing: gap) {
+            // izquierda: tie-break (los sets ya se ven como pelotas bajo cada tanteo)
             HStack(spacing: 6) {
-                Chip(text: "Sets \(match.setsWon[0]) - \(match.setsWon[1])")
                 if match.tiebreak {
                     Chip(text: match.tbTarget == 10 ? "Super tie-break" : "Tie-break")
                 }
@@ -18,24 +23,46 @@ struct HeaderView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
 
             // centro: acciones del partido
-            HStack(spacing: 6) {
-                IconButton(label: "↶", enabled: state.canUndo) { state.undo() }
-                IconButton(label: "↷", enabled: state.canRedo) { state.redo() }
-                IconButton(label: "✚", highlighted: true) { state.screen = .setup }
+            HStack(spacing: gap) {
+                IconButton(label: "↶", enabled: state.canUndo, size: btn) { state.undo() }
+                IconButton(label: "↷", enabled: state.canRedo, size: btn) { state.redo() }
+                IconButton(label: "🎾", enabled: !match.finished, size: btn) { pickServer = true }
+                IconButton(label: "✚", highlighted: true, size: btn) { state.screen = .setup }
             }
 
             // derecha: voz y ajustes
-            HStack(spacing: 6) {
+            HStack(spacing: gap) {
                 Spacer(minLength: 0)
-                IconButton(label: state.cfg.voice ? "🔊" : "🔇", active: state.cfg.voice) {
+                IconButton(label: state.cfg.voice ? "🔊" : "🔇", active: state.cfg.voice, size: btn) {
                     state.toggleVoice()
                 }
-                IconButton(label: "⚙") { state.screen = .settings }
+                IconButton(label: "⚙", size: btn) { state.screen = .settings }
             }
             .frame(maxWidth: .infinity, alignment: .trailing)
         }
-        .padding(.horizontal, 10)
+        .padding(.horizontal, hSize == .compact ? 8 : 10)
         .padding(.vertical, 8)
+        .confirmationDialog("¿Quién saca ahora?", isPresented: $pickServer, titleVisibility: .visible) {
+            ForEach(Self.order, id: \.self) { k in
+                serverButton(team: k / 2, player: k % 2)
+            }
+            Button("Cancelar", role: .cancel) {}
+        } message: {
+            Text("El tanteo no cambia. Después saca el del mismo lado de la otra pareja, luego el compañero del elegido y por último el compañero de ese.")
+        }
+    }
+
+    /// Derecha A, izquierda A, derecha B, izquierda B (equipo * 2 + jugador).
+    private static let order = [1, 0, 3, 2]
+
+    private func serverButton(team t: Int, player p: Int) -> some View {
+        let cur = Rules.serverOf(state.match, state.cfg)
+        let sel = cur.team == t && cur.player == p
+        let name = state.cfg.players[t][p]
+        let side = name == Cfg.defaultPlayers[t][p] ? "" : (p == 1 ? " · derecha" : " · izquierda")
+        return Button((sel ? "🎾 " : "") + name + side + " (" + state.cfg.names[t] + ")") {
+            if !sel { state.setServer(team: t, player: p) }
+        }
     }
 }
 
@@ -60,6 +87,7 @@ struct IconButton: View {
     var enabled: Bool = true
     var active: Bool = false
     var highlighted: Bool = false
+    var size: CGFloat = 46
     let action: () -> Void
 
     private var background: Color {
@@ -84,8 +112,8 @@ struct IconButton: View {
         Button(action: action) {
             Text(label)
                 .foregroundStyle(foreground)
-                .font(.system(size: 19))
-                .frame(width: 46, height: 46)
+                .font(.system(size: size < 46 ? 17 : 19))
+                .frame(width: size, height: size)
                 .background(background)
                 .clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
                 .overlay(

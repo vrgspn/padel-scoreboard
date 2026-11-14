@@ -58,8 +58,9 @@ fun MatchScreen(state: AppState) {
             // tamaños calculados como en la web: proporcionales a la pantalla
             val numberDp: Dp = if (portrait) min(h.value * 0.30f, w.value * 0.44f).dp
             else min(h.value * 0.52f, w.value * 0.30f).dp
-            val nameDp: Dp = if (portrait) (w.value * 0.055f).coerceIn(22f, 40f).dp
-            else (h.value * 0.065f).coerceIn(18f, 38f).dp
+            // nombre de la pareja grande, que se lea desde lejos
+            val nameDp: Dp = if (portrait) (w.value * 0.075f).coerceIn(28f, 56f).dp
+            else (h.value * 0.09f).coerceIn(24f, 54f).dp
             val playerDp: Dp = if (portrait) (w.value * 0.055f).coerceIn(17f, 34f).dp
             else (h.value * 0.075f).coerceIn(16f, 34f).dp
 
@@ -190,15 +191,24 @@ private fun TeamPanel(
                     weight = FontWeight.ExtraBold,
                     letterSpacingEm = 0.06f,
                     uppercase = true,
-                    maxLines = 2
+                    maxLines = 2,
+                    lineHeightFactor = 1.0f
                 )
                 AutoText(
                     text = Rules.pointLabel(match, team),
                     sizeDp = if (Rules.pointLabel(match, team) == "AD") numberDp * 0.62f else numberDp,
                     color = P.txt,
                     weight = FontWeight.ExtraBold,
-                    lineHeightFactor = 0.9f
+                    lineHeightFactor = 0.82f
                 )
+                // sets ganados: una pelota por cada uno, centradas bajo el tanteo
+                val won = match.setsWon[team]
+                if (won > 0) {
+                    Spacer(Modifier.height(6.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        repeat(won) { Ball(nameDp * 0.6f) }
+                    }
+                }
             }
         }
 
@@ -294,14 +304,6 @@ private fun GamesRow(state: AppState, team: Int) {
     val match: Match = state.match
     val color = P.team(team)
     Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-        match.sets.forEach { s ->
-            GameBox(
-                text = s.games(team).toString(),
-                sup = if (s.hadTiebreak) s.tb(team).toString() else null,
-                color = if (s.games(team) > s.games(1 - team)) P.txt else P.dim,
-                background = P.panel2
-            )
-        }
         if (!match.finished) {
             GameBox(
                 text = match.games[team].toString(),

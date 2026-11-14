@@ -8,6 +8,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -21,7 +22,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -29,7 +33,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import com.vrgspn.marcadorpadel.DEFAULT_PLAYERS
 import com.vrgspn.marcadorpadel.AppState
 import com.vrgspn.marcadorpadel.Rules
 import com.vrgspn.marcadorpadel.Screen
@@ -38,37 +45,83 @@ import com.vrgspn.marcadorpadel.Screen
 fun Header(state: AppState) {
     val match = state.match
     val cfg = state.cfg
+    var pickServer by remember { mutableStateOf(false) }
+    if (pickServer) ServerDialog(state) { pickServer = false }
 
-    Row(
-        Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        // izquierda: sets y formato
+    // en un móvil en vertical, botones algo más pequeños para que quepa todo
+    BoxWithConstraints(Modifier.fillMaxWidth()) {
+        val narrow = maxWidth < 440.dp
+        val btn = if (narrow) 40.dp else 46.dp
+        val gap = if (narrow) 4.dp else 6.dp
         Row(
-            Modifier.weight(1f),
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            Modifier.fillMaxWidth().padding(horizontal = if (narrow) 8.dp else 10.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Chip("Sets ${match.setsWon[0]} - ${match.setsWon[1]}")
-            if (match.tiebreak) Chip(if (match.tbTarget == 10) "Super tie-break" else "Tie-break")
-        }
+            // izquierda: tie-break (los sets ya se ven como pelotas bajo cada tanteo)
+            Row(
+                Modifier.weight(1f),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (match.tiebreak) Chip(if (match.tbTarget == 10) "Super tie-break" else "Tie-break")
+            }
 
-        // centro: acciones del partido
-        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-            IconBtn("↶", enabled = state.canUndo) { state.undo() }
-            IconBtn("↷", enabled = state.canRedo) { state.redo() }
-            IconBtn("✚", highlighted = true) { state.screen = Screen.SETUP }
-        }
+            // centro: acciones del partido
+            Row(
+                Modifier.padding(horizontal = gap),
+                horizontalArrangement = Arrangement.spacedBy(gap),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconBtn("↶", enabled = state.canUndo, size = btn) { state.undo() }
+                IconBtn("↷", enabled = state.canRedo, size = btn) { state.redo() }
+                IconBtn("🎾", enabled = !match.finished, size = btn) { pickServer = true }
+                IconBtn("✚", highlighted = true, size = btn) { state.screen = Screen.SETUP }
+            }
 
-        // derecha: voz y ajustes
-        Row(
-            Modifier.weight(1f),
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-            verticalAlignment = Alignment.CenterVertically
+            // derecha: voz y ajustes
+            Row(
+                Modifier.weight(1f),
+                horizontalArrangement = Arrangement.spacedBy(gap),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Spacer(Modifier.weight(1f))
+                IconBtn(if (cfg.voice) "🔊" else "🔇", active = cfg.voice, size = btn) { state.toggleVoice() }
+                IconBtn("⚙", size = btn) { state.screen = Screen.SETTINGS }
+            }
+        }
+    }
+}
+
+/** ¿Quién saca ahora? El tanteo no cambia; el orden sigue desde el elegido. */
+@Composable
+private fun ServerDialog(state: AppState, onClose: () -> Unit) {
+    val cfg = state.cfg
+    val cur = Rules.serverOf(state.match, cfg)
+    Dialog(onDismissRequest = onClose) {
+        Column(
+            Modifier.clip(RoundedCornerShape(20.dp)).background(Color(0xFF0F1A2E))
+                .border(1.dp, P.line, RoundedCornerShape(20.dp))
+                .padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Spacer(Modifier.weight(1f))
-            IconBtn(if (cfg.voice) "🔊" else "🔇", active = cfg.voice) { state.toggleVoice() }
-            IconBtn("⚙") { state.screen = Screen.SETTINGS }
+            Text(
+                "🎾  ¿Quién saca ahora?", color = P.txt, fontWeight = FontWeight.ExtraBold,
+                fontSize = with(LocalDensity.current) { 20.dp.toSp() }
+            )
+            Help("El tanteo no cambia. Después saca el del mismo lado de la otra pareja, luego el compañero del elegido y por último el compañero de ese.")
+            listOf(0 to 1, 0 to 0, 1 to 1, 1 to 0).forEach { (t, p) ->
+                val name = cfg.players[t][p]
+                val side = if (name == DEFAULT_PLAYERS[t][p]) "" else if (p == 1) " · derecha" else " · izquierda"
+                val sel = cur.first == t && cur.second == p
+                PickButton(
+                    (if (sel) "🎾 " else "") + name + side + " (" + cfg.names[t] + ")",
+                    sel, Modifier.fillMaxWidth()
+                ) {
+                    onClose()
+                    if (!sel) state.setServer(t, p)
+                }
+            }
+            SmallButton("Cancelar", Modifier.fillMaxWidth()) { onClose() }
         }
     }
 }
@@ -90,6 +143,7 @@ fun IconBtn(
     enabled: Boolean = true,
     active: Boolean = false,
     highlighted: Boolean = false,
+    size: Dp = 46.dp,
     onClick: () -> Unit
 ) {
     val bg = when {
@@ -103,7 +157,7 @@ fun IconBtn(
         else -> P.line
     }
     Box(
-        Modifier.size(46.dp).alpha(if (enabled) 1f else 0.32f)
+        Modifier.size(size).alpha(if (enabled) 1f else 0.32f)
             .clip(RoundedCornerShape(13.dp)).background(bg)
             .border(1.dp, border, RoundedCornerShape(13.dp))
             .clickable(enabled = enabled) { onClick() },
@@ -112,7 +166,7 @@ fun IconBtn(
         Text(
             label,
             color = if (active) P.teamA else if (highlighted) P.txt else P.dim,
-            fontSize = with(LocalDensity.current) { 19.dp.toSp() }
+            fontSize = with(LocalDensity.current) { (if (size < 46.dp) 17 else 19).dp.toSp() }
         )
     }
 }

@@ -91,6 +91,9 @@ class Store(context: Context) {
         j.put("tb", JSONArray(m.tb))
         j.put("tbTarget", m.tbTarget)
         j.put("tbStartIdx", m.tbStartIdx)
+        j.put("serveBaseTeam", m.serveBaseTeam)
+        j.put("serveBasePlayer", m.serveBasePlayer)
+        j.put("serveOff", m.serveOff)
         j.put("startedAt", m.startedAt)
         j.put("elapsed", m.elapsed)
         j.put("finished", m.finished)
@@ -122,6 +125,9 @@ class Store(context: Context) {
                 tb = ints("tb", listOf(0, 0)),
                 tbTarget = j.optInt("tbTarget", 7),
                 tbStartIdx = j.optInt("tbStartIdx", 0),
+                serveBaseTeam = j.optInt("serveBaseTeam", -1),
+                serveBasePlayer = j.optInt("serveBasePlayer", 0),
+                serveOff = j.optInt("serveOff", 0),
                 startedAt = j.optLong("startedAt", 0L),
                 elapsed = j.optLong("elapsed", 0L),
                 finished = j.optBoolean("finished", false),
