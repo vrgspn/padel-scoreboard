@@ -40,7 +40,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.material3.Text
 import com.vrgspn.marcadorpadel.AppState
-import com.vrgspn.marcadorpadel.Match
 import com.vrgspn.marcadorpadel.Rules
 import kotlin.math.min
 
@@ -59,8 +58,8 @@ fun MatchScreen(state: AppState) {
             val numberDp: Dp = if (portrait) min(h.value * 0.30f, w.value * 0.44f).dp
             else min(h.value * 0.52f, w.value * 0.30f).dp
             // nombre de la pareja grande, que se lea desde lejos
-            val nameDp: Dp = if (portrait) (w.value * 0.075f).coerceIn(28f, 56f).dp
-            else (h.value * 0.09f).coerceIn(24f, 54f).dp
+            val nameDp: Dp = if (portrait) (w.value * 0.085f).coerceIn(30f, 62f).dp
+            else (h.value * 0.11f).coerceIn(28f, 64f).dp
             val playerDp: Dp = if (portrait) (w.value * 0.055f).coerceIn(17f, 34f).dp
             else (h.value * 0.075f).coerceIn(16f, 34f).dp
 
@@ -201,12 +200,20 @@ private fun TeamPanel(
                     weight = FontWeight.ExtraBold,
                     lineHeightFactor = 0.82f
                 )
-                // sets ganados: una pelota por cada uno, centradas bajo el tanteo
+                // bajo el tanteo: una pelota por set ganado y, a su derecha, los juegos del set
                 val won = match.setsWon[team]
-                if (won > 0) {
+                if (won > 0 || !match.finished) {
                     Spacer(Modifier.height(6.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        repeat(won) { Ball(nameDp * 0.6f) }
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(nameDp * 0.3f),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        if (won > 0) {
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                repeat(won) { Ball(nameDp * 0.6f) }
+                            }
+                        }
+                        if (!match.finished) GameBox(match.games[team].toString(), color, nameDp * 0.9f)
                     }
                 }
             }
@@ -220,7 +227,6 @@ private fun TeamPanel(
                 ) {
                     playerTop()
                     playerBottom()
-                    GamesRow(state, team)
                 }
                 Box(Modifier.weight(0.58f).fillMaxHeight(), contentAlignment = Alignment.Center) { scoreBlock() }
             }
@@ -229,8 +235,6 @@ private fun TeamPanel(
                 playerTop()
                 Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) { scoreBlock() }
                 playerBottom()
-                Spacer(Modifier.height(4.dp))
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) { GamesRow(state, team) }
             }
         }
 
@@ -299,44 +303,22 @@ private fun Ball(size: Dp) {
     )
 }
 
+/** Juegos del set en curso, en un cuadrito del color de la pareja. */
 @Composable
-private fun GamesRow(state: AppState, team: Int) {
-    val match: Match = state.match
-    val color = P.team(team)
-    Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-        if (!match.finished) {
-            GameBox(
-                text = match.games[team].toString(),
-                sup = null,
-                color = color,
-                background = color.copy(alpha = 0.18f)
-            )
-        }
-    }
-}
-
-@Composable
-private fun GameBox(text: String, sup: String?, color: Color, background: Color) {
+private fun GameBox(text: String, color: Color, size: Dp) {
     Box(
-        Modifier.size(width = 34.dp, height = 34.dp).clip(RoundedCornerShape(9.dp)).background(background),
+        Modifier.size(size).clip(RoundedCornerShape(size * 0.28f))
+            .background(color.copy(alpha = 0.18f))
+            .border(1.dp, color.copy(alpha = 0.40f), RoundedCornerShape(size * 0.28f)),
         contentAlignment = Alignment.Center
     ) {
-        Row(verticalAlignment = Alignment.Top) {
-            Text(
-                text,
-                color = color,
-                fontSize = with(LocalDensity.current) { 18.dp.toSp() },
-                fontWeight = FontWeight.Bold
-            )
-            if (sup != null) {
-                Text(
-                    sup,
-                    color = P.dim,
-                    fontSize = with(LocalDensity.current) { 10.dp.toSp() },
-                    fontWeight = FontWeight.Bold
-                )
-            }
-        }
+        Text(
+            text,
+            color = color,
+            fontSize = with(LocalDensity.current) { (size * 0.66f).toSp() },
+            fontWeight = FontWeight.ExtraBold,
+            maxLines = 1
+        )
     }
 }
 

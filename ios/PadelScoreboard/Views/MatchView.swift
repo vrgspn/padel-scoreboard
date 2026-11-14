@@ -20,8 +20,8 @@ struct MatchView: View {
                     : min(h * 0.52, w * 0.30)
                 // nombre de la pareja grande, que se lea desde lejos
                 let nameSize: CGFloat = portrait
-                    ? min(max(w * 0.075, 28), 56)
-                    : min(max(h * 0.09, 24), 54)
+                    ? min(max(w * 0.085, 30), 62)
+                    : min(max(h * 0.11, 28), 64)
                 let playerSize: CGFloat = portrait
                     ? min(max(w * 0.055, 17), 34)
                     : min(max(h * 0.075, 16), 34)
@@ -142,8 +142,6 @@ private struct TeamPanel: View {
                         playerRow(topPlayer)
                         Spacer(minLength: 0)
                         playerRow(1 - topPlayer)
-                        Spacer(minLength: 0)
-                        GamesRow(team: team)
                     }
                     .padding(.leading, 14)
                     .padding(.trailing, 4)
@@ -159,8 +157,6 @@ private struct TeamPanel: View {
                 playerRow(topPlayer)
                 scoreBlock.frame(maxHeight: .infinity)
                 playerRow(1 - topPlayer)
-                Spacer().frame(height: 4)
-                GamesRow(team: team)
             }
             .padding(10)
         }
@@ -183,11 +179,19 @@ private struct TeamPanel: View {
                 .lineLimit(1)
                 .minimumScaleFactor(0.4)
                 .monospacedDigit()
-            // sets ganados: una pelota por cada uno, centradas bajo el tanteo
+            // bajo el tanteo: una pelota por set ganado y, a su derecha, los juegos del set
             let won = state.match.setsWon[team]
-            if won > 0 {
-                HStack(spacing: 8) {
-                    ForEach(0..<won, id: \.self) { _ in Ball(size: nameSize * 0.6) }
+            let finished = state.match.finished
+            if won > 0 || !finished {
+                HStack(spacing: nameSize * 0.3) {
+                    if won > 0 {
+                        HStack(spacing: 8) {
+                            ForEach(0..<won, id: \.self) { _ in Ball(size: nameSize * 0.6) }
+                        }
+                    }
+                    if !finished {
+                        GameBox(text: String(state.match.games[team]), color: color, size: nameSize * 0.9)
+                    }
                 }
                 .padding(.top, 6)
             }
@@ -258,47 +262,25 @@ struct Ball: View {
     }
 }
 
-/// Juegos del set en curso.
-private struct GamesRow: View {
-
-    @EnvironmentObject private var state: AppState
-    let team: Int
-
-    var body: some View {
-        let match = state.match
-        HStack(spacing: 6) {
-            if !match.finished {
-                GameBox(
-                    text: String(match.games[team]),
-                    sup: nil,
-                    color: P.team(team),
-                    background: P.team(team).opacity(0.18)
-                )
-            }
-        }
-    }
-}
-
+/// Juegos del set en curso, en un cuadrito del color de la pareja.
 private struct GameBox: View {
     let text: String
-    let sup: String?
     let color: Color
-    let background: Color
+    let size: CGFloat
 
     var body: some View {
-        HStack(alignment: .top, spacing: 0) {
-            Text(text)
-                .foregroundStyle(color)
-                .font(.system(size: 18, weight: .bold))
-                .monospacedDigit()
-            if let sup {
-                Text(sup)
-                    .foregroundStyle(P.dim)
-                    .font(.system(size: 10, weight: .bold))
-            }
-        }
-        .frame(width: 34, height: 34)
-        .background(background)
-        .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+        Text(text)
+            .foregroundStyle(color)
+            .font(.system(size: size * 0.66, weight: .heavy))
+            .monospacedDigit()
+            .lineLimit(1)
+            .minimumScaleFactor(0.5)
+            .frame(minWidth: size, minHeight: size)
+            .background(color.opacity(0.18))
+            .overlay(
+                RoundedRectangle(cornerRadius: size * 0.28, style: .continuous)
+                    .stroke(color.opacity(0.4), lineWidth: 1)
+            )
+            .clipShape(RoundedRectangle(cornerRadius: size * 0.28, style: .continuous))
     }
 }
