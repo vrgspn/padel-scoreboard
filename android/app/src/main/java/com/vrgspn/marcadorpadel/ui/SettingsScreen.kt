@@ -131,6 +131,11 @@ fun SettingsScreen(state: AppState) {
                 cfg.keepAwake
             ) { v -> state.updateCfg { it.copy(keepAwake = v) } }
             SwitchRow(
+                "Pantalla completa",
+                "Oculta la barra de estado y los botones de Android. Desliza desde el borde para verlos un momento.",
+                cfg.fullscreen
+            ) { v -> state.updateCfg { it.copy(fullscreen = v) } }
+            SwitchRow(
                 "Avisar del cambio de lado",
                 "Muestra un cartel cuando toca cambiar. El marcador no se mueve: la pareja A siempre a la izquierda y la B a la derecha.",
                 cfg.sideAlert

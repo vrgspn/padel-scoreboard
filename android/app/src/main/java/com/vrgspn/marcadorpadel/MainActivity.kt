@@ -8,9 +8,16 @@ import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -34,12 +41,29 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContent { PadelApp(state) }
+        setContent {
+            // se aplica en cuanto cambia el ajuste, sin salir de la app
+            val full = state.cfg.fullscreen
+            LaunchedEffect(full) { applyFullscreen() }
+            PadelApp(state)
+        }
     }
 
     override fun onResume() {
         super.onResume()
         applyKeepAwake()
+        applyFullscreen()
+    }
+
+    /** Oculta (o muestra) la barra de estado y la de navegación de Android. */
+    private fun applyFullscreen() {
+        val ctl = WindowCompat.getInsetsController(window, window.decorView)
+        if (state.cfg.fullscreen) {
+            ctl.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            ctl.hide(WindowInsetsCompat.Type.systemBars())
+        } else {
+            ctl.show(WindowInsetsCompat.Type.systemBars())
+        }
     }
 
     private fun applyKeepAwake() {
@@ -86,13 +110,21 @@ class MainActivity : ComponentActivity() {
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
-        if (hasFocus) applyKeepAwake()
+        if (hasFocus) {
+            applyKeepAwake()
+            applyFullscreen()   // al cerrar un diálogo Android puede volver a sacar las barras
+        }
     }
 }
 
 @Composable
 fun PadelApp(state: AppState) {
-    Box(Modifier.fillMaxSize().background(P.bg)) {
+    // el fondo llega hasta los bordes; el contenido se aparta de las barras
+    // del sistema y del notch cuando están a la vista
+    Box(
+        Modifier.fillMaxSize().background(P.bg)
+            .windowInsetsPadding(WindowInsets.safeDrawing)
+    ) {
         when (state.screen) {
             Screen.MATCH -> MatchScreen(state)
             Screen.SETUP -> SetupScreen(state)

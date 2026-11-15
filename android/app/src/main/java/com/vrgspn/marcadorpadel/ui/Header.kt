@@ -86,6 +86,12 @@ fun Header(state: AppState) {
             ) {
                 Spacer(Modifier.weight(1f))
                 IconBtn(if (cfg.voice) "🔊" else "🔇", active = cfg.voice, size = btn) { state.toggleVoice() }
+                // en vertical no cabe: queda en Ajustes › Pantalla (como en la web)
+                if (!narrow) {
+                    IconBtn("⛶", active = cfg.fullscreen, size = btn) {
+                        state.updateCfg { it.copy(fullscreen = !it.fullscreen) }
+                    }
+                }
                 IconBtn("⚙", size = btn) { state.screen = Screen.SETTINGS }
             }
         }

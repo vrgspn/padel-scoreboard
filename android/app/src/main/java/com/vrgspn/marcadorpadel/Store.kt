@@ -30,6 +30,7 @@ class Store(context: Context) {
         j.put("guasa", cfg.guasa)
         j.put("vibrate", cfg.vibrate)
         j.put("keepAwake", cfg.keepAwake)
+        j.put("fullscreen", cfg.fullscreen)
         j.put("sideAlert", cfg.sideAlert)
         prefs.edit().putString("cfg", j.toString()).apply()
     }
@@ -67,6 +68,7 @@ class Store(context: Context) {
                 guasa = j.optBoolean("guasa", d.guasa),
                 vibrate = j.optBoolean("vibrate", d.vibrate),
                 keepAwake = j.optBoolean("keepAwake", d.keepAwake),
+                fullscreen = j.optBoolean("fullscreen", d.fullscreen),
                 sideAlert = j.optBoolean("sideAlert", d.sideAlert)
             )
         } catch (e: Exception) {

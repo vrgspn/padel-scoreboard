@@ -27,3 +27,5 @@ android/upload-keystore.p12
 clave.pem
 cert.pem
 keystore.base64.txt
+
+build-play/

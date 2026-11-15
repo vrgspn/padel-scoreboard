@@ -78,6 +78,7 @@ data class Cfg(
     // pantalla (la pareja A siempre a la izquierda y la B a la derecha)
     val vibrate: Boolean = true,
     val keepAwake: Boolean = true,
+    val fullscreen: Boolean = true,
     val sideAlert: Boolean = true
 )
 
