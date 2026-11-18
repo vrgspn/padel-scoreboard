@@ -147,6 +147,98 @@ enum Rules {
         return ""
     }
 
+    // MARK: - Ajustar marcador
+
+    /// ¿El marcador a mano se juega a tie-break? 0 = no, 7 = tie-break, 10 = super tie-break.
+    static func adjTbTarget(_ e: Adjust, _ cfg: Cfg) -> Int {
+        let n = setsNeeded(cfg) - 1
+        if cfg.superTb && n > 0 && e.sets[0] == n && e.sets[1] == n { return 10 }
+        if cfg.tiebreak && e.games[0] == 6 && e.games[1] == 6 { return 7 }
+        return 0
+    }
+
+    /// Motivo por el que el marcador a mano no vale, o "" si se puede guardar.
+    static func adjProblem(_ e: Adjust, _ cfg: Cfg) -> String {
+        let tgt = adjTbTarget(e, cfg)
+        for t in 0..<2 {
+            let o = 1 - t
+            if tgt != 10 && e.games[t] >= 6 && e.games[t] - e.games[o] >= 2 {
+                return "Con \(e.games[0])-\(e.games[1]) el set ya estaría ganado: súmalo en sets."
+            }
+            if tgt > 0 && e.pts[t] >= tgt && e.pts[t] - e.pts[o] >= 2 {
+                return "Con \(e.pts[0])-\(e.pts[1]) el tie-break ya estaría ganado."
+            }
+        }
+        return ""
+    }
+
+    /// Valores iniciales del diálogo a partir del partido en curso.
+    static func adjustFrom(_ m: Match, _ cfg: Cfg) -> Adjust {
+        var sets = m.setsWon
+        // un partido acabado se abre con el último set aún por cerrar
+        if m.finished && m.winner >= 0 { sets[m.winner] = min(sets[m.winner], setsNeeded(cfg) - 1) }
+        return Adjust(pts: m.tiebreak ? m.tb : m.pts, games: m.games, sets: sets)
+    }
+
+    /// Un paso (+1/−1) en una casilla del diálogo: fila 0 = juego, 1 = juegos, 2 = sets.
+    static func adjStep(_ e: Adjust, row: Int, team t: Int, by d: Int, _ cfg: Cfg) -> Adjust {
+        let o = 1 - t
+        let before = adjTbTarget(e, cfg)
+        var r = e
+        switch row {
+        case 0:
+            if before > 0 {
+                r.pts[t] = max(0, r.pts[t] + d)
+            } else {
+                // ventaja sólo sin punto de oro y con el rival en 40
+                let top = (!cfg.golden && r.pts[o] >= 3) ? 4 : 3
+                r.pts[t] = min(top, max(0, r.pts[t] + d))
+                if r.pts[t] == 4 && r.pts[o] == 4 { r.pts[o] = 3 }
+                if r.pts[o] == 4 && r.pts[t] < 3 { r.pts[o] = 3 }
+            }
+        case 1:
+            r.games[t] = min(cfg.tiebreak ? 6 : 30, max(0, r.games[t] + d))
+        default:
+            r.sets[t] = min(setsNeeded(cfg) - 1, max(0, r.sets[t] + d))
+            if adjTbTarget(r, cfg) == 10 { r.games = [0, 0] }
+        }
+        // si cambia entre juego normal y tie-break, el tanteo del juego empieza de cero
+        if (adjTbTarget(r, cfg) > 0) != (before > 0) { r.pts = [0, 0] }
+        return r
+    }
+
+    /// Pone el partido en el marcador a mano. El orden de saque sigue a los juegos jugados.
+    static func applyAdjust(_ match: Match, _ e: Adjust, _ cfg: Cfg) -> Match {
+        let tgt = adjTbTarget(e, cfg)
+        var m = match
+        let sameSets = m.setsWon == e.sets
+        if sameSets { m.serveIdx += (e.games[0] + e.games[1]) - (m.games[0] + m.games[1]) }
+        // historial de sets: quita o añade (sin resultado conocido) los que cambien
+        for t in 0..<2 {
+            var d = e.sets[t] - m.setsWon[t]
+            while d < 0, let i = m.sets.lastIndex(where: { $0.winner == t }) {
+                m.sets.remove(at: i)
+                d += 1
+            }
+            while d > 0 {
+                m.sets.append(SetScore(a: -1, b: -1, w: t))
+                d -= 1
+            }
+        }
+        let wasTb = m.tiebreak && sameSets && m.games == e.games
+        m.setsWon = e.sets
+        m.games = e.games
+        m.tiebreak = tgt > 0
+        m.tbTarget = tgt > 0 ? tgt : 7
+        m.tb = tgt > 0 ? e.pts : [0, 0]
+        m.pts = tgt > 0 ? [0, 0] : e.pts
+        if tgt > 0 && !wasTb { m.tbStartIdx = m.serveIdx }
+        m.finished = false
+        m.winner = -1
+        m.elapsed = 0
+        return m
+    }
+
     /// Texto del tanteo que se ve en el marcador.
     static func pointLabel(_ m: Match, _ t: Int) -> String {
         m.tiebreak ? String(m.tb[t]) : pointLabels[m.pts[t]]

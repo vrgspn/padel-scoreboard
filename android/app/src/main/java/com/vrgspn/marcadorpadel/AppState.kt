@@ -167,6 +167,22 @@ class AppState(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    /** Pone el marcador a mano (por si se olvidó apuntar algún punto). Se puede deshacer. */
+    fun adjustScore(e: Adjust) {
+        if (Rules.adjProblem(e, cfg).isNotEmpty()) return
+        past.addLast(match)
+        if (past.size > 200) past.removeFirst()
+        future.clear()
+        val m = Rules.applyAdjust(match, e, cfg)
+        match = m
+        store.saveMatch(m)
+        buzz(20)
+        showToast("Marcador ajustado")
+        if (cfg.voice) {
+            speech.say(listOf("marcador ajustado", Phrases.points(m, cfg), Phrases.serveLine(m, cfg)), cfg.voiceRate)
+        }
+    }
+
     fun resetScore() {
         past.clear(); future.clear()
         match = Match()
@@ -194,7 +210,7 @@ class AppState(app: Application) : AndroidViewModel(app) {
     }
 
     fun scoreLine(): String = match.sets.joinToString("  ") { s ->
-        s.a.toString() + "-" + s.b + if (s.hadTiebreak) "(" + minOf(s.tbA, s.tbB) + ")" else ""
+        if (!s.known) "?-?" else s.a.toString() + "-" + s.b + if (s.hadTiebreak) "(" + minOf(s.tbA, s.tbB) + ")" else ""
     }
 
     // ------------------------------------------------------------------ mando

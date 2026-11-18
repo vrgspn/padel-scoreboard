@@ -300,8 +300,27 @@ label.fl.narrow{max-width:190px}
   background:var(--a);color:#06281b;margin-top:4px
 }
 .bigbtn.ghost{background:var(--panel);color:var(--txt);border:1px solid var(--line);margin-top:8px}
+.bigbtn[disabled]{opacity:.4}
 .bigbtn.danger{background:#3f1d1d;color:#fca5a5;border:1px solid #7f1d1d}
 .pcount{display:flex;gap:8px}
+/* ---------- Ajustar marcador ---------- */
+.adjgrid{display:grid;grid-template-columns:minmax(78px,auto) 1fr 1fr;gap:10px 10px;align-items:center}
+.adjgrid .hd{font-weight:800;text-align:center;text-transform:uppercase;letter-spacing:.5px;font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.adjgrid .rl{font-size:13px;color:var(--dim);line-height:1.25}
+.stepper{display:flex;align-items:center;justify-content:space-between;gap:6px;background:#0c1424;border:1px solid var(--line);border-radius:13px;padding:4px}
+.stepper button{width:44px;height:44px;border-radius:10px;background:var(--panel-2);font-size:22px;font-weight:700;flex:none}
+.stepper button:active{transform:scale(.92)}
+.stepper button[disabled]{opacity:.3}
+.stepper .v{flex:1;text-align:center;font-size:24px;font-weight:800;font-variant-numeric:tabular-nums}
+.adjgrid [data-t="0"]{color:var(--a)}
+.adjgrid [data-t="1"]{color:var(--b)}
+#adjErr{color:var(--danger);font-size:13px;min-height:18px;margin-top:10px}
+@media (max-width:420px){
+  .adjgrid{grid-template-columns:1fr 1fr;gap:6px 8px}
+  .adjgrid .rl{grid-column:1 / -1;margin-top:6px}
+  .adjgrid .corner{display:none}
+  .stepper button{width:40px;height:40px}
+}
 .pcount input{flex:1}
 #winOverlay .trophy{font-size:64px;text-align:center}
 .scoreline{
@@ -390,6 +409,7 @@ label.fl.narrow{max-width:190px}
       <button class="ibtn wide" id="btnUndo" title="Deshacer el último punto">↶<span class="lbl">Deshacer</span></button>
       <button class="ibtn wide" id="btnRedo" title="Rehacer">↷<span class="lbl">Rehacer</span></button>
       <button class="ibtn wide" id="btnServe" title="Elegir quién saca ahora">🎾<span class="lbl">Saque</span></button>
+      <button class="ibtn wide" id="btnAdjust" title="Ajustar el marcador a mano">✎<span class="lbl">Ajustar</span></button>
       <button class="ibtn wide primary" id="btnNew" title="Nuevo partido">✚<span class="lbl">Nuevo</span></button>
     </div>
     <div id="hdrBtns">
@@ -569,6 +589,20 @@ label.fl.narrow{max-width:190px}
     <p class="lead">El tanteo no cambia. Desde aquí sigue el orden: después saca el del mismo lado de la otra pareja, luego el compañero del elegido y por último el compañero de ese.</p>
     <div id="serveList"></div>
     <button class="bigbtn ghost" id="btnServeClose">Cancelar</button>
+  </div>
+</div>
+
+<!-- ============ AJUSTAR MARCADOR ============ -->
+<div class="modal" id="adjustSheet">
+  <div class="sheet">
+    <h1><span>✎</span> Ajustar marcador</h1>
+    <p class="lead">Por si se olvidó apuntar algún punto. Al guardar, el partido sigue desde aquí y se puede deshacer con ↶.</p>
+    <div class="card">
+      <div class="adjgrid" id="adjGrid"></div>
+      <div id="adjErr"></div>
+    </div>
+    <button class="bigbtn" id="btnAdjSave">Guardar</button>
+    <button class="bigbtn ghost" id="btnAdjClose">Cancelar</button>
   </div>
 </div>
 
@@ -775,6 +809,57 @@ function applyPoint(s,t){
   return ev;
 }
 
+/** Ganador de un set ya cerrado (los que se añaden a mano no saben su resultado). */
+const setWinner = s => s[3] !== undefined && s[3] !== null ? s[3] : (s[0] > s[1] ? 0 : 1);
+
+/** ¿El tanteo a mano `e` ({pts,games,sets}) se juega a tie-break? Devuelve 0, 7 o 10. */
+function adjTbTarget(e){
+  const n = setsNeeded()-1;
+  if(cfg.superTb && n > 0 && e.sets[0] === n && e.sets[1] === n) return 10;
+  if(cfg.tiebreak && e.games[0] === 6 && e.games[1] === 6) return 7;
+  return 0;
+}
+
+/** Comprueba el tanteo a mano; devuelve el motivo si no vale, o "" si se puede guardar. */
+function adjProblem(e){
+  const tgt = adjTbTarget(e);
+  for(let t=0;t<2;t++){
+    const o = 1-t;
+    if(tgt !== 10 && e.games[t] >= 6 && e.games[t]-e.games[o] >= 2)
+      return "Con " + e.games[0] + "-" + e.games[1] + " el set ya estaría ganado: súmalo en sets.";
+    if(tgt && e.pts[t] >= tgt && e.pts[t]-e.pts[o] >= 2)
+      return "Con " + e.pts[0] + "-" + e.pts[1] + " el tie-break ya estaría ganado.";
+  }
+  return "";
+}
+
+/** Pone el marcador en el tanteo a mano `e`. El orden de saque sigue a los juegos jugados. */
+function applyAdjust(s, e){
+  const tgt = adjTbTarget(e);
+  const sameSets = s.setsWon[0] === e.sets[0] && s.setsWon[1] === e.sets[1];
+  if(sameSets) s.serveIdx += (e.games[0]+e.games[1]) - (s.games[0]+s.games[1]);
+  // historial de sets: quita o añade (sin resultado conocido) los que cambien
+  for(let t=0;t<2;t++){
+    let d = e.sets[t] - s.setsWon[t];
+    while(d < 0){
+      let i = s.sets.length-1;
+      while(i >= 0 && setWinner(s.sets[i]) !== t) i--;
+      if(i < 0) break;
+      s.sets.splice(i,1); d++;
+    }
+    for(; d > 0; d--) s.sets.push([null,null,null,t]);
+  }
+  const wasTb = s.tiebreak && sameSets && s.games[0] === e.games[0] && s.games[1] === e.games[1];
+  s.setsWon = e.sets.slice();
+  s.games = e.games.slice();
+  s.tiebreak = !!tgt;
+  s.tbTarget = tgt || 7;
+  s.tb = tgt ? e.pts.slice() : [0,0];
+  s.pts = tgt ? [0,0] : e.pts.slice();
+  if(tgt && !wasTb) s.tbStartIdx = s.serveIdx;
+  s.finished = false; s.winner = null; s.elapsed = 0;
+}
+
 /** Qué estaría en juego si la pareja `t` gana el punto siguiente. */
 function stake(t){
   if(st.finished) return "";
@@ -919,7 +1004,7 @@ function render(){
 }
 
 function scoreLine(){
-  return st.sets.map(s => s[0]+"-"+s[1] + (s[2] ? "("+Math.min(s[2][0],s[2][1])+")" : "")).join("  ");
+  return st.sets.map(s => s[0] === null ? "?-?" : s[0]+"-"+s[1] + (s[2] ? "("+Math.min(s[2][0],s[2][1])+")" : "")).join("  ");
 }
 
 function flash(t){
@@ -1039,6 +1124,7 @@ function setsPhrase(){
 
 /** Resultado hablado de un set: el super tie-break se canta por sus puntos, no por el juego. */
 function setScoreWords(s, t){
+  if(s[0] === null) return "";   // set ajustado a mano: no se sabe el resultado
   const sup = s[2] && (s[0] + s[1]) === 1;
   const a = sup ? s[2][t] : s[t], b = sup ? s[2][1-t] : s[1-t];
   return nw(a) + " " + nw(b);
@@ -1051,7 +1137,7 @@ function announce(t, ev){
   const cambio = (ev.side && !ev.match && cfg.voiceSwitch) ? "cambio de lado" : "";
   if(ev.match){
     p.push("juego set y partido para " + cfg.names[st.winner]);
-    p.push(st.sets.map(s => setScoreWords(s, st.winner)).join(" "));
+    p.push(st.sets.map(s => setScoreWords(s, st.winner)).filter(Boolean).join(" "));
     return say(p, false, ".", guasa);
   }else if(ev.set){
     const s = st.sets[st.sets.length-1];
@@ -1748,6 +1834,90 @@ function openServeSheet(){
   openModal("serveSheet");
 }
 
+/* ---------- ajustar marcador ---------- */
+let adj = null;   // tanteo que se está editando: {pts,games,sets}
+
+function openAdjust(){
+  adj = { pts: st.tiebreak ? st.tb.slice() : st.pts.slice(), games: st.games.slice(), sets: st.setsWon.slice() };
+  // un partido acabado se abre con el último set aún por cerrar
+  if(st.finished && st.winner !== null) adj.sets[st.winner] = Math.min(adj.sets[st.winner], setsNeeded()-1);
+  renderAdjust();
+  openModal("adjustSheet");
+}
+
+function adjStep(row, t, d){
+  const e = adj, o = 1-t;
+  const before = adjTbTarget(e);
+  if(row === "pts"){
+    if(before){ e.pts[t] = Math.max(0, e.pts[t] + d); }
+    else{
+      // ventaja sólo sin punto de oro y con el rival en 40
+      const max = (!cfg.golden && e.pts[o] >= 3) ? 4 : 3;
+      e.pts[t] = Math.min(max, Math.max(0, e.pts[t] + d));
+      if(e.pts[t] === 4 && e.pts[o] === 4) e.pts[o] = 3;
+      if(e.pts[o] === 4 && e.pts[t] < 3) e.pts[o] = 3;
+    }
+  }else if(row === "games"){
+    e.games[t] = Math.min(cfg.tiebreak ? 6 : 30, Math.max(0, e.games[t] + d));
+  }else{
+    e.sets[t] = Math.min(setsNeeded()-1, Math.max(0, e.sets[t] + d));
+    if(adjTbTarget(e) === 10) e.games = [0,0];
+  }
+  // si cambia entre juego normal y tie-break, el tanteo del juego empieza de cero
+  if(!!adjTbTarget(e) !== !!before) e.pts = [0,0];
+  renderAdjust();
+}
+
+function renderAdjust(){
+  const e = adj, tgt = adjTbTarget(e);
+  const g = $("#adjGrid");
+  g.innerHTML = "";
+  const add = (text, cls, t) => {
+    const d = document.createElement("div");
+    if(cls) d.className = cls;
+    if(t !== undefined) d.dataset.t = t;
+    d.textContent = text; g.appendChild(d); return d;
+  };
+  add("", "corner");
+  add(cfg.names[0], "hd", 0);
+  add(cfg.names[1], "hd", 1);
+  const rows = [
+    ["pts",   tgt === 10 ? "Super tie-break" : tgt ? "Tie-break" : "Juego actual", t => tgt ? String(e.pts[t]) : PT[e.pts[t]]],
+    ["games", "Juegos del set", t => String(e.games[t])],
+    ["sets",  "Sets ganados", t => String(e.sets[t])],
+  ];
+  for(const [row, label, val] of rows){
+    add(label, "rl");
+    for(let t=0;t<2;t++){
+      const box = add("", "stepper");
+      const minus = document.createElement("button"); minus.textContent = "−";
+      const v = document.createElement("div"); v.className = "v"; v.dataset.t = t; v.textContent = val(t);
+      const plus = document.createElement("button"); plus.textContent = "+";
+      const locked = row === "games" && tgt === 10;   // el super tie-break se juega sin juegos
+      minus.disabled = locked || e[row][t] <= 0;
+      plus.disabled = locked;
+      minus.onclick = () => adjStep(row, t, -1);
+      plus.onclick  = () => adjStep(row, t, +1);
+      box.append(minus, v, plus);
+    }
+  }
+  const err = adjProblem(e);
+  $("#adjErr").textContent = err;
+  $("#btnAdjSave").disabled = !!err;
+}
+
+function saveAdjust(){
+  if(!adj || adjProblem(adj)) return;
+  past.push(clone(st)); if(past.length > 200) past.shift();
+  future = [];
+  applyAdjust(st, adj);
+  adj = null;
+  closeModal("adjustSheet"); closeModal("winOverlay");
+  render(); save(); buzz(20);
+  toast("Marcador ajustado");
+  if(cfg.voice) say(["marcador ajustado", pointsPhrase(), serveLine()]);
+}
+
 /* ---------- modales ---------- */
 function openModal(id){ $("#"+id).classList.add("open"); }
 function closeModal(id){ $("#"+id).classList.remove("open"); stopLearn(); }
@@ -1817,6 +1987,9 @@ function wire(){
   });
   $("#btnServe").onclick = openServeSheet;
   $("#btnServeClose").onclick = ()=>closeModal("serveSheet");
+  $("#btnAdjust").onclick = openAdjust;
+  $("#btnAdjSave").onclick = saveAdjust;
+  $("#btnAdjClose").onclick = ()=>{ adj = null; closeModal("adjustSheet"); };
 
   $("#btnCloseCfg").onclick = ()=>{ closeModal("settings"); render(); };
   $("#btnEditMatch").onclick = ()=>{ closeModal("settings"); renderSetup(); openModal("setup"); };

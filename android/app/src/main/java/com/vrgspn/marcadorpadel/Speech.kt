@@ -125,6 +125,7 @@ object Phrases {
 
     /** El super tie-break se canta por sus puntos, no por el juego. */
     fun setScore(s: SetScore, t: Int): String {
+        if (!s.known) return ""   // set ajustado a mano: no se sabe el resultado
         val sup = s.hadTiebreak && (s.a + s.b) == 1
         val a = if (sup) s.tb(t) else s.games(t)
         val b = if (sup) s.tb(1 - t) else s.games(1 - t)
@@ -141,7 +142,7 @@ object Phrases {
 
         if (ev.match) {
             parts += "juego set y partido para " + cfg.names[m.winner]
-            parts += m.sets.joinToString(" ") { setScore(it, m.winner) }
+            parts += m.sets.map { setScore(it, m.winner) }.filter { it.isNotEmpty() }.joinToString(" ")
             return parts to true
         }
         if (ev.set) {

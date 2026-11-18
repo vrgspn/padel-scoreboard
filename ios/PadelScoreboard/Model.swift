@@ -7,21 +7,27 @@ import Foundation
  */
 
 /// Resultado de un set ya cerrado. `tbA`/`tbB` guardan el tie-break si lo hubo.
+/// Los sets sumados a mano al ajustar el marcador no saben su resultado
+/// (a = b = -1) y guardan quién lo ganó en `w`.
 struct SetScore: Codable, Equatable {
     var a: Int
     var b: Int
     var tbA: Int = -1
     var tbB: Int = -1
+    var w: Int = -1
 
     var hadTiebreak: Bool { tbA >= 0 }
+    var known: Bool { a >= 0 }
+    var winner: Int { w >= 0 ? w : (a > b ? 0 : 1) }
     func games(_ team: Int) -> Int { team == 0 ? a : b }
     func tb(_ team: Int) -> Int { team == 0 ? tbA : tbB }
 
-    init(a: Int, b: Int, tbA: Int = -1, tbB: Int = -1) {
+    init(a: Int, b: Int, tbA: Int = -1, tbB: Int = -1, w: Int = -1) {
         self.a = a
         self.b = b
         self.tbA = tbA
         self.tbB = tbB
+        self.w = w
     }
 
     init(from decoder: Decoder) throws {
@@ -30,6 +36,7 @@ struct SetScore: Codable, Equatable {
         b = (try? c.decode(Int.self, forKey: .b)) ?? 0
         tbA = (try? c.decode(Int.self, forKey: .tbA)) ?? -1
         tbB = (try? c.decode(Int.self, forKey: .tbB)) ?? -1
+        w = (try? c.decode(Int.self, forKey: .w)) ?? -1
     }
 }
 
@@ -79,6 +86,14 @@ struct Match: Codable, Equatable {
         finished = (try? c.decode(Bool.self, forKey: .finished)) ?? false
         winner = (try? c.decode(Int.self, forKey: .winner)) ?? -1
     }
+}
+
+/// Marcador puesto a mano: `pts` es el tanteo del juego (0...4 = 0/15/30/40/AD)
+/// o, en tie-break, sus puntos; `games` los juegos del set y `sets` los sets ganados.
+struct Adjust: Equatable {
+    var pts: [Int]
+    var games: [Int]
+    var sets: [Int]
 }
 
 /// Lo que ha provocado el punto recién apuntado.

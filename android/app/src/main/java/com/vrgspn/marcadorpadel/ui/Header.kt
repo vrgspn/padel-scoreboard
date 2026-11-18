@@ -33,6 +33,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
@@ -47,6 +48,8 @@ fun Header(state: AppState) {
     val cfg = state.cfg
     var pickServer by remember { mutableStateOf(false) }
     if (pickServer) ServerDialog(state) { pickServer = false }
+    var adjusting by remember { mutableStateOf(false) }
+    if (adjusting) AdjustDialog(state) { adjusting = false }
 
     // en un móvil en vertical, botones algo más pequeños para que quepa todo
     BoxWithConstraints(Modifier.fillMaxWidth()) {
@@ -75,16 +78,17 @@ fun Header(state: AppState) {
                 IconBtn("↶", enabled = state.canUndo, size = btn) { state.undo() }
                 IconBtn("↷", enabled = state.canRedo, size = btn) { state.redo() }
                 IconBtn("🎾", enabled = !match.finished, size = btn) { pickServer = true }
+                IconBtn("✎", size = btn) { adjusting = true }
                 IconBtn("✚", highlighted = true, size = btn) { state.screen = Screen.SETUP }
             }
 
-            // derecha: voz y ajustes
+            // derecha: voz y ajustes (en vertical, sin repartir hueco: así caben las acciones)
             Row(
-                Modifier.weight(1f),
+                if (narrow) Modifier else Modifier.weight(1f),
                 horizontalArrangement = Arrangement.spacedBy(gap),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Spacer(Modifier.weight(1f))
+                if (!narrow) Spacer(Modifier.weight(1f))
                 IconBtn(if (cfg.voice) "🔊" else "🔇", active = cfg.voice, size = btn) { state.toggleVoice() }
                 // en vertical no cabe: queda en Ajustes › Pantalla (como en la web)
                 if (!narrow) {
@@ -129,6 +133,95 @@ private fun ServerDialog(state: AppState, onClose: () -> Unit) {
             }
             SmallButton("Cancelar", Modifier.fillMaxWidth()) { onClose() }
         }
+    }
+}
+
+/** Ajustar marcador: dos columnas (A y B) con el juego, los juegos del set y los sets. */
+@Composable
+private fun AdjustDialog(state: AppState, onClose: () -> Unit) {
+    val cfg = state.cfg
+    var e by remember { mutableStateOf(Rules.adjustFrom(state.match, cfg)) }
+    val tgt = Rules.adjTbTarget(e, cfg)
+    val problem = Rules.adjProblem(e, cfg)
+    val sp = with(LocalDensity.current) { 1.dp.toSp() }
+    Dialog(onDismissRequest = onClose) {
+        Column(
+            Modifier.clip(RoundedCornerShape(20.dp)).background(Color(0xFF0F1A2E))
+                .border(1.dp, P.line, RoundedCornerShape(20.dp))
+                .padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text("✎  Ajustar marcador", color = P.txt, fontWeight = FontWeight.ExtraBold, fontSize = sp * 20)
+            Help("Por si se olvidó apuntar algún punto. Al guardar, el partido sigue desde aquí y se puede deshacer con ↶.")
+            Row(Modifier.fillMaxWidth().padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                for (t in 0..1) {
+                    Text(
+                        cfg.names[t].uppercase(), color = P.team(t), fontWeight = FontWeight.ExtraBold,
+                        fontSize = sp * 15, maxLines = 1, textAlign = TextAlign.Center, modifier = Modifier.weight(1f)
+                    )
+                }
+            }
+            val rows = listOf(
+                if (tgt == 10) "Super tie-break" else if (tgt > 0) "Tie-break" else "Juego actual",
+                "Juegos del set",
+                "Sets ganados"
+            )
+            rows.forEachIndexed { row, label ->
+                Text(label, color = P.dim, fontSize = sp * 13, modifier = Modifier.padding(top = 4.dp))
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    for (t in 0..1) {
+                        val v = when (row) { 0 -> e.pts[t]; 1 -> e.games[t]; else -> e.sets[t] }
+                        val text = if (row == 0 && tgt == 0) Rules.POINT_LABELS[v] else v.toString()
+                        val locked = row == 1 && tgt == 10   // el super tie-break se juega sin juegos
+                        Stepper(
+                            text, P.team(t), canDown = !locked && v > 0, canUp = !locked,
+                            modifier = Modifier.weight(1f),
+                            onDown = { e = Rules.adjStep(e, row, t, -1, cfg) },
+                            onUp = { e = Rules.adjStep(e, row, t, +1, cfg) }
+                        )
+                    }
+                }
+            }
+            if (problem.isNotEmpty()) Text(problem, color = P.danger, fontSize = sp * 13)
+            Box(Modifier.alpha(if (problem.isEmpty()) 1f else 0.4f)) {
+                BigButton("Guardar", primary = true) {
+                    if (problem.isEmpty()) { state.adjustScore(e); onClose() }
+                }
+            }
+            SmallButton("Cancelar", Modifier.fillMaxWidth()) { onClose() }
+        }
+    }
+}
+
+@Composable
+private fun Stepper(
+    text: String, color: Color, canDown: Boolean, canUp: Boolean,
+    modifier: Modifier, onDown: () -> Unit, onUp: () -> Unit
+) {
+    val sp = with(LocalDensity.current) { 1.dp.toSp() }
+    Row(
+        modifier.clip(RoundedCornerShape(13.dp)).background(Color(0xFF0C1424))
+            .border(1.dp, P.line, RoundedCornerShape(13.dp)).padding(4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        StepBtn("−", canDown, onDown)
+        Text(
+            text, color = color, fontWeight = FontWeight.ExtraBold, fontSize = sp * 24,
+            textAlign = TextAlign.Center, maxLines = 1, modifier = Modifier.weight(1f)
+        )
+        StepBtn("+", canUp, onUp)
+    }
+}
+
+@Composable
+private fun StepBtn(label: String, enabled: Boolean, onClick: () -> Unit) {
+    Box(
+        Modifier.size(42.dp).alpha(if (enabled) 1f else 0.3f)
+            .clip(RoundedCornerShape(10.dp)).background(P.panel2)
+            .clickable(enabled = enabled) { onClick() },
+        contentAlignment = Alignment.Center
+    ) {
+        Text(label, color = P.txt, fontWeight = FontWeight.Bold, fontSize = with(LocalDensity.current) { 22.dp.toSp() })
     }
 }
 

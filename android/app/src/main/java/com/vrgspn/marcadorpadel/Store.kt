@@ -84,7 +84,7 @@ class Store(context: Context) {
         val sets = JSONArray()
         m.sets.forEach {
             sets.put(JSONObject().apply {
-                put("a", it.a); put("b", it.b); put("tbA", it.tbA); put("tbB", it.tbB)
+                put("a", it.a); put("b", it.b); put("tbA", it.tbA); put("tbB", it.tbB); put("w", it.w)
             })
         }
         j.put("sets", sets)
@@ -111,7 +111,7 @@ class Store(context: Context) {
             val arr = j.optJSONArray("sets")
             if (arr != null) for (i in 0 until arr.length()) {
                 val s = arr.getJSONObject(i)
-                sets += SetScore(s.getInt("a"), s.getInt("b"), s.optInt("tbA", -1), s.optInt("tbB", -1))
+                sets += SetScore(s.getInt("a"), s.getInt("b"), s.optInt("tbA", -1), s.optInt("tbB", -1), s.optInt("w", -1))
             }
             fun ints(name: String, def: List<Int>): List<Int> {
                 val a = j.optJSONArray(name) ?: return def

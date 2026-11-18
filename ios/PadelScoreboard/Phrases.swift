@@ -61,6 +61,7 @@ enum Phrases {
 
     /// El super tie-break se canta por sus puntos, no por el juego.
     static func setScore(_ s: SetScore, _ t: Int) -> String {
+        if !s.known { return "" }   // set ajustado a mano: no se sabe el resultado
         let sup = s.hadTiebreak && (s.a + s.b) == 1
         let a = sup ? s.tb(t) : s.games(t)
         let b = sup ? s.tb(1 - t) : s.games(1 - t)
@@ -75,7 +76,7 @@ enum Phrases {
 
         if ev.match {
             parts.append("juego set y partido para " + cfg.names[m.winner])
-            parts.append(m.sets.map { setScore($0, m.winner) }.joined(separator: " "))
+            parts.append(m.sets.map { setScore($0, m.winner) }.filter { !$0.isEmpty }.joined(separator: " "))
             return (parts, true)
         }
         if ev.set {

@@ -201,6 +201,22 @@ final class AppState: ObservableObject {
         }
     }
 
+    /// Pone el marcador a mano (por si se olvidó apuntar algún punto). Se puede deshacer.
+    func adjustScore(_ e: Adjust) {
+        guard Rules.adjProblem(e, cfg).isEmpty else { return }
+        past.append(match)
+        if past.count > 200 { past.removeFirst() }
+        future.removeAll()
+        let m = Rules.applyAdjust(match, e, cfg)
+        match = m
+        store.saveMatch(m)
+        buzz(20)
+        showToast("Marcador ajustado")
+        if cfg.voice {
+            speech.say(["marcador ajustado", Phrases.points(m, cfg), Phrases.serveLine(m, cfg)], rate: cfg.voiceRate)
+        }
+    }
+
     func resetScore() {
         past.removeAll()
         future.removeAll()
@@ -232,7 +248,7 @@ final class AppState: ObservableObject {
 
     func scoreLine() -> String {
         match.sets.map { s in
-            "\(s.a)-\(s.b)" + (s.hadTiebreak ? "(\(min(s.tbA, s.tbB)))" : "")
+            !s.known ? "?-?" : "\(s.a)-\(s.b)" + (s.hadTiebreak ? "(\(min(s.tbA, s.tbB)))" : "")
         }.joined(separator: "  ")
     }
 

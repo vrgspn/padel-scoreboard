@@ -5,9 +5,15 @@ package com.vrgspn.marcadorpadel
  * mismas reglas de puntuación, misma rotación de saque y mismos avisos.
  */
 
-/** Resultado de un set ya cerrado. [tb] guarda el tie-break si lo hubo. */
-data class SetScore(val a: Int, val b: Int, val tbA: Int = -1, val tbB: Int = -1) {
+/**
+ * Resultado de un set ya cerrado. [tbA]/[tbB] guardan el tie-break si lo hubo.
+ * Los sets sumados a mano al ajustar el marcador no saben su resultado
+ * (a = b = -1) y guardan quién lo ganó en [w].
+ */
+data class SetScore(val a: Int, val b: Int, val tbA: Int = -1, val tbB: Int = -1, val w: Int = -1) {
     val hadTiebreak: Boolean get() = tbA >= 0
+    val known: Boolean get() = a >= 0
+    val winner: Int get() = if (w >= 0) w else if (a > b) 0 else 1
     fun games(team: Int) = if (team == 0) a else b
     fun tb(team: Int) = if (team == 0) tbA else tbB
 }
@@ -31,6 +37,12 @@ data class Match(
     val finished: Boolean = false,
     val winner: Int = -1
 )
+
+/**
+ * Marcador puesto a mano: [pts] es el tanteo del juego (0..4 = 0/15/30/40/AD)
+ * o, en tie-break, sus puntos; [games] los juegos del set y [sets] los sets ganados.
+ */
+data class Adjust(val pts: List<Int>, val games: List<Int>, val sets: List<Int>)
 
 /** Lo que ha provocado el punto recién apuntado. */
 data class Events(
@@ -215,6 +227,98 @@ object Rules {
             ev.game -> if (serverOf(m, cfg).first == t) "Punto de juego" else "Break"
             else -> ""
         }
+    }
+
+    // ------------------------------------------------------ ajustar marcador
+
+    /** ¿El marcador a mano se juega a tie-break? 0 = no, 7 = tie-break, 10 = super tie-break. */
+    fun adjTbTarget(e: Adjust, cfg: Cfg): Int {
+        val n = setsNeeded(cfg) - 1
+        if (cfg.superTb && n > 0 && e.sets[0] == n && e.sets[1] == n) return 10
+        if (cfg.tiebreak && e.games[0] == 6 && e.games[1] == 6) return 7
+        return 0
+    }
+
+    /** Motivo por el que el marcador a mano no vale, o "" si se puede guardar. */
+    fun adjProblem(e: Adjust, cfg: Cfg): String {
+        val tgt = adjTbTarget(e, cfg)
+        for (t in 0..1) {
+            val o = 1 - t
+            if (tgt != 10 && e.games[t] >= 6 && e.games[t] - e.games[o] >= 2)
+                return "Con ${e.games[0]}-${e.games[1]} el set ya estaría ganado: súmalo en sets."
+            if (tgt > 0 && e.pts[t] >= tgt && e.pts[t] - e.pts[o] >= 2)
+                return "Con ${e.pts[0]}-${e.pts[1]} el tie-break ya estaría ganado."
+        }
+        return ""
+    }
+
+    /** Valores iniciales del diálogo a partir del partido en curso. */
+    fun adjustFrom(m: Match, cfg: Cfg): Adjust {
+        val sets = m.setsWon.toMutableList()
+        // un partido acabado se abre con el último set aún por cerrar
+        if (m.finished && m.winner >= 0) sets[m.winner] = minOf(sets[m.winner], setsNeeded(cfg) - 1)
+        return Adjust(if (m.tiebreak) m.tb else m.pts, m.games, sets)
+    }
+
+    /** Un paso (+1/−1) en una casilla del diálogo: fila 0 = juego, 1 = juegos, 2 = sets. */
+    fun adjStep(e: Adjust, row: Int, t: Int, d: Int, cfg: Cfg): Adjust {
+        val o = 1 - t
+        val before = adjTbTarget(e, cfg)
+        var pts = e.pts.toMutableList()
+        var games = e.games.toMutableList()
+        val sets = e.sets.toMutableList()
+        when (row) {
+            0 -> if (before > 0) {
+                pts[t] = maxOf(0, pts[t] + d)
+            } else {
+                // ventaja sólo sin punto de oro y con el rival en 40
+                val max = if (!cfg.golden && pts[o] >= 3) 4 else 3
+                pts[t] = (pts[t] + d).coerceIn(0, max)
+                if (pts[t] == 4 && pts[o] == 4) pts[o] = 3
+                if (pts[o] == 4 && pts[t] < 3) pts[o] = 3
+            }
+            1 -> games[t] = (games[t] + d).coerceIn(0, if (cfg.tiebreak) 6 else 30)
+            else -> {
+                sets[t] = (sets[t] + d).coerceIn(0, setsNeeded(cfg) - 1)
+                if (adjTbTarget(Adjust(pts, games, sets), cfg) == 10) games = mutableListOf(0, 0)
+            }
+        }
+        // si cambia entre juego normal y tie-break, el tanteo del juego empieza de cero
+        if ((adjTbTarget(Adjust(pts, games, sets), cfg) > 0) != (before > 0)) pts = mutableListOf(0, 0)
+        return Adjust(pts, games, sets)
+    }
+
+    /** Pone el partido en el marcador a mano. El orden de saque sigue a los juegos jugados. */
+    fun applyAdjust(m: Match, e: Adjust, cfg: Cfg): Match {
+        val tgt = adjTbTarget(e, cfg)
+        val sameSets = m.setsWon == e.sets
+        val serveIdx = if (sameSets) m.serveIdx + (e.games.sum() - m.games.sum()) else m.serveIdx
+        // historial de sets: quita o añade (sin resultado conocido) los que cambien
+        val hist = m.sets.toMutableList()
+        for (t in 0..1) {
+            var d = e.sets[t] - m.setsWon[t]
+            while (d < 0) {
+                val i = hist.indexOfLast { it.winner == t }
+                if (i < 0) break
+                hist.removeAt(i); d++
+            }
+            repeat(maxOf(0, d)) { hist += SetScore(-1, -1, w = t) }
+        }
+        val wasTb = m.tiebreak && sameSets && m.games == e.games
+        return m.copy(
+            pts = if (tgt > 0) listOf(0, 0) else e.pts,
+            games = e.games,
+            setsWon = e.sets,
+            sets = hist,
+            serveIdx = serveIdx,
+            tiebreak = tgt > 0,
+            tb = if (tgt > 0) e.pts else listOf(0, 0),
+            tbTarget = if (tgt > 0) tgt else 7,
+            tbStartIdx = if (tgt > 0 && !wasTb) serveIdx else m.tbStartIdx,
+            finished = false,
+            winner = -1,
+            elapsed = 0L
+        )
     }
 
     /** Texto del tanteo que se ve en el marcador. */
